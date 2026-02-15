@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI彩票</title>
-    <!-- 确保先加载ethers -->
+    <!-- 先加载ethers -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <!-- 合约配置 -->
-    <script src="contract.js"></script>
     <style>
         * {
             margin: 0;
@@ -72,7 +70,7 @@
             border-radius: 16px;
             font-size: 13px;
             cursor: pointer;
-            transition: all 0.3s;
+            font-weight: bold;
         }
 
         .connect-btn:hover {
@@ -81,7 +79,6 @@
 
         .connect-btn:disabled {
             background: #ccc;
-            cursor: not-allowed;
         }
 
         .refresh-btn {
@@ -92,9 +89,6 @@
             font-size: 12px;
             color: #666;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 4px;
         }
 
         .stats-grid {
@@ -214,22 +208,6 @@
             overflow: hidden;
         }
 
-        .game-section::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-            animation: pulse 4s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-
         .game-tag {
             display: inline-flex;
             align-items: center;
@@ -270,12 +248,6 @@
             cursor: pointer;
             position: relative;
             z-index: 1;
-            transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-
-        .start-btn:active {
-            transform: scale(0.98);
         }
 
         .lottery-detail {
@@ -515,15 +487,6 @@
             z-index: 1000;
             display: none;
         }
-
-        /* 错误提示样式 */
-        .error-toast {
-            background: #e17055 !important;
-        }
-
-        .success-toast {
-            background: #00b894 !important;
-        }
     </style>
 </head>
 <body>
@@ -531,15 +494,13 @@
     <div class="header">
         <div class="brand">AI彩票</div>
         <div class="wallet-status" id="walletStatus">
-            <button class="connect-btn" id="connectBtn" onclick="connectWallet()">连接钱包</button>
+            <button class="connect-btn" id="connectBtn">连接钱包</button>
         </div>
     </div>
 
     <div id="homePage" class="page active">
         <div style="padding: 0 16px; margin-bottom: 8px; text-align: right;">
-            <button class="refresh-btn" onclick="refreshData()" id="refreshBtn" style="display:none;">
-                <span>🔄</span> 刷新数据
-            </button>
+            <button class="refresh-btn" id="refreshBtn" style="display:none;">🔄 刷新数据</button>
         </div>
 
         <div class="stats-grid">
@@ -577,7 +538,7 @@
             <div class="game-tag">🔥 热门彩票</div>
             <div class="game-title">AI数字彩票</div>
             <div class="game-subtitle">每30分钟开奖 | 赢取AI币奖励</div>
-            <button class="start-btn" onclick="showLottery()">立即参与</button>
+            <button class="start-btn" id="startBtn">立即参与</button>
         </div>
 
         <div class="lottery-detail" id="lotteryDetail">
@@ -586,23 +547,21 @@
                 <div class="input-group">
                     <label class="input-label">购买数量 (100 AI币/张)</label>
                     <div class="input-wrap">
-                        <input type="number" id="ticketAmount" value="1" min="1" onchange="calculateCost()">
+                        <input type="number" id="ticketAmount" value="1" min="1">
                         <span class="input-unit">张</span>
                     </div>
                 </div>
                 <div class="quick-amounts">
-                    <button class="quick-btn" onclick="setAmount(1)">1张</button>
-                    <button class="quick-btn" onclick="setAmount(5)">5张</button>
-                    <button class="quick-btn" onclick="setAmount(10)">10张</button>
-                    <button class="quick-btn" onclick="setAmount(50)">50张</button>
+                    <button class="quick-btn" data-amount="1">1张</button>
+                    <button class="quick-btn" data-amount="5">5张</button>
+                    <button class="quick-btn" data-amount="10">10张</button>
+                    <button class="quick-btn" data-amount="50">50张</button>
                 </div>
                 <div style="margin-top: 12px; font-size: 13px; color: #666;">
                     总计: <span id="totalCost" style="color: #00b894; font-weight: bold;">100</span> AI币
                     <br>预计中奖概率: <span id="winChance" style="color: #e17055; font-weight: bold;">0%</span>
                 </div>
-                <button class="buy-lottery-btn" id="buyBtn" onclick="buyTickets()" disabled>
-                    请先连接钱包
-                </button>
+                <button class="buy-lottery-btn" id="buyBtn" disabled>请先连接钱包</button>
             </div>
 
             <div style="margin-top: 20px;">
@@ -633,7 +592,7 @@
             <div class="input-group">
                 <label class="input-label">燃烧数量</label>
                 <div class="input-wrap">
-                    <input type="number" id="burnAmount" placeholder="请输入数量" oninput="calculateBurn()">
+                    <input type="number" id="burnAmount" placeholder="请输入数量">
                     <span class="input-unit">AI币</span>
                 </div>
             </div>
@@ -641,9 +600,7 @@
                 获得分红权重: <span id="burnWeight" style="color: #e17055; font-weight: bold;">0</span>
                 <br>当前分红比例: <span id="dividendRatio" style="color: #00b894;">0%</span>
             </div>
-            <button class="burn-btn-large" id="burnButton" onclick="burnTokens()" disabled>
-                请先连接钱包
-            </button>
+            <button class="burn-btn-large" id="burnButton" disabled>请先连接钱包</button>
         </div>
 
         <div class="burn-card">
@@ -664,9 +621,7 @@
             <div style="font-size: 14px; color: #e17055; margin-bottom: 8px;">💎 可领取分红</div>
             <div class="claim-amount" id="claimableAmount">0.00</div>
             <div style="font-size: 12px; color: #999; margin-bottom: 16px;">WBNB</div>
-            <button class="claim-btn-large" id="claimButton" onclick="claimDividend()" disabled>
-                请先连接钱包
-            </button>
+            <button class="claim-btn-large" id="claimButton" disabled>请先连接钱包</button>
         </div>
 
         <div style="background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
@@ -693,19 +648,19 @@
     </div>
 
     <div class="bottom-nav">
-        <button class="nav-item active" onclick="switchPage('home')">
+        <button class="nav-item active" data-page="home">
             <span class="nav-icon">🏠</span>
             <span>首页</span>
         </button>
-        <button class="nav-item" onclick="switchPage('burn')">
+        <button class="nav-item" data-page="burn">
             <span class="nav-icon">🔥</span>
             <span>燃烧</span>
         </button>
-        <button class="nav-item" onclick="switchPage('claim')">
+        <button class="nav-item" data-page="claim">
             <span class="nav-icon">💎</span>
             <span>领分红</span>
         </button>
-        <button class="nav-item" onclick="switchPage('rank')">
+        <button class="nav-item" data-page="rank">
             <span class="nav-icon">🏆</span>
             <span>排行</span>
         </button>
@@ -714,51 +669,30 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // 全局变量
-        let AppState = {
+        // 全局状态
+        window.AppState = {
             provider: null,
             signer: null,
             userAddress: null,
             isConnected: false
         };
 
-        // 页面切换
-        function switchPage(page) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            
-            if(page === 'home') {
-                document.getElementById('homePage').classList.add('active');
-                document.querySelectorAll('.nav-item')[0].classList.add('active');
-            } else if(page === 'burn') {
-                document.getElementById('burnPage').classList.add('active');
-                document.querySelectorAll('.nav-item')[1].classList.add('active');
-            } else if(page === 'claim') {
-                document.getElementById('claimPage').classList.add('active');
-                document.querySelectorAll('.nav-item')[2].classList.add('active');
-            } else if(page === 'rank') {
-                document.getElementById('rankPage').classList.add('active');
-                document.querySelectorAll('.nav-item')[3].classList.add('active');
-                loadRank();
-            }
+        // 显示提示
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 2000);
         }
 
-        // 连接钱包 - 关键修复
+        // 连接钱包 - 使用addEventListener确保绑定成功
         async function connectWallet() {
-            console.log('开始连接钱包...');
+            console.log('尝试连接钱包...');
             
             try {
-                // 检查是否安装MetaMask
-                if (typeof window.ethereum === 'undefined') {
-                    showToast('请先安装MetaMask钱包', 'error');
-                    alert('请先安装MetaMask钱包！\n请访问 https://metamask.io 下载');
-                    return;
-                }
-
-                // 检查ethers是否加载
-                if (typeof ethers === 'undefined') {
-                    showToast('正在加载依赖...', 'error');
-                    console.error('ethers未加载');
+                // 检查MetaMask
+                if (!window.ethereum) {
+                    alert('请先安装MetaMask钱包！');
                     return;
                 }
 
@@ -766,56 +700,67 @@
                 btn.textContent = '连接中...';
                 btn.disabled = true;
 
-                console.log('请求账户...');
-                
-                // 请求连接
+                // 请求账户
                 const accounts = await window.ethereum.request({ 
                     method: 'eth_requestAccounts' 
                 });
                 
-                console.log('获取到账户:', accounts);
-                
                 if (accounts.length === 0) {
-                    showToast('未获取到账户', 'error');
-                    btn.textContent = '连接钱包';
-                    btn.disabled = false;
-                    return;
+                    throw new Error('未获取到账户');
                 }
 
-                // 创建provider
-                AppState.provider = new ethers.providers.Web3Provider(window.ethereum);
-                AppState.signer = AppState.provider.getSigner();
-                AppState.userAddress = accounts[0];
-                AppState.isConnected = true;
+                // 初始化ethers
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+                const address = accounts[0];
 
-                console.log('钱包连接成功:', AppState.userAddress);
+                // 保存状态
+                window.AppState.provider = provider;
+                window.AppState.signer = signer;
+                window.AppState.userAddress = address;
+                window.AppState.isConnected = true;
+
+                console.log('连接成功:', address);
 
                 // 更新UI
-                updateWalletUI();
+                const shortAddr = address.slice(0, 6) + '...' + address.slice(-4);
+                document.getElementById('walletStatus').innerHTML = `
+                    <span class="address-tag">${shortAddr}</span>
+                    <button class="refresh-btn" id="refreshBtn">🔄 刷新</button>
+                `;
+
+                // 显示刷新按钮
+                document.getElementById('refreshBtn').style.display = 'inline-block';
                 
-                // 加载数据
-                if (typeof ContractAPI !== 'undefined') {
-                    await ContractAPI.refreshData();
-                } else {
-                    // 如果contract.js没加载，使用模拟数据
-                    loadMockData();
-                }
+                // 启用功能按钮
+                document.getElementById('buyBtn').disabled = false;
+                document.getElementById('buyBtn').textContent = '确认购买';
+                document.getElementById('burnButton').disabled = false;
+                document.getElementById('burnButton').textContent = '确认燃烧';
+                document.getElementById('claimButton').disabled = false;
+                document.getElementById('claimButton').textContent = '立即领取';
+
+                // 绑定刷新按钮
+                document.getElementById('refreshBtn').addEventListener('click', refreshData);
 
                 showToast('钱包连接成功！');
                 
-                // 显示刷新按钮
-                document.getElementById('refreshBtn').style.display = 'inline-flex';
-                
-                // 启用功能按钮
-                updateButtonStates();
+                // 加载数据
+                loadMockData();
 
                 // 监听账户变化
-                window.ethereum.on('accountsChanged', handleAccountsChanged);
-                window.ethereum.on('chainChanged', () => window.location.reload());
-                
+                window.ethereum.on('accountsChanged', (accounts) => {
+                    if (accounts.length === 0) {
+                        window.location.reload();
+                    } else {
+                        window.AppState.userAddress = accounts[0];
+                        connectWallet(); // 重新连接
+                    }
+                });
+
             } catch (error) {
                 console.error('连接失败:', error);
-                showToast('连接失败: ' + (error.message || '用户拒绝'), 'error');
+                showToast('连接失败: ' + error.message);
                 
                 const btn = document.getElementById('connectBtn');
                 btn.textContent = '连接钱包';
@@ -823,76 +768,36 @@
             }
         }
 
-        // 处理账户变化
-        function handleAccountsChanged(accounts) {
-            if (accounts.length === 0) {
-                // 用户断开了连接
-                AppState.isConnected = false;
-                AppState.userAddress = null;
-                document.getElementById('walletStatus').innerHTML = 
-                    '<button class="connect-btn" id="connectBtn" onclick="connectWallet()">连接钱包</button>';
-                document.getElementById('refreshBtn').style.display = 'none';
-                updateButtonStates();
-                showToast('钱包已断开', 'error');
-            } else {
-                AppState.userAddress = accounts[0];
-                updateWalletUI();
-                if (typeof ContractAPI !== 'undefined') {
-                    ContractAPI.refreshData();
-                }
-            }
-        }
-
-        // 更新钱包UI
-        function updateWalletUI() {
-            const statusDiv = document.getElementById('walletStatus');
-            if (AppState.isConnected && AppState.userAddress) {
-                const shortAddr = AppState.userAddress.slice(0, 6) + '...' + AppState.userAddress.slice(-4);
-                statusDiv.innerHTML = `
-                    <span class="address-tag">${shortAddr}</span>
-                    <button class="refresh-btn" onclick="refreshData()">🔄 刷新</button>
-                `;
-            }
-        }
-
-        // 更新按钮状态
-        function updateButtonStates() {
-            const buyBtn = document.getElementById('buyBtn');
-            const burnBtn = document.getElementById('burnButton');
-            const claimBtn = document.getElementById('claimButton');
-            
-            if (AppState.isConnected) {
-                buyBtn.disabled = false;
-                buyBtn.textContent = '确认购买';
-                burnBtn.disabled = false;
-                burnBtn.textContent = '确认燃烧';
-                claimBtn.disabled = false;
-                claimBtn.textContent = '立即领取';
-            } else {
-                buyBtn.disabled = true;
-                buyBtn.textContent = '请先连接钱包';
-                burnBtn.disabled = true;
-                burnBtn.textContent = '请先连接钱包';
-                claimBtn.disabled = true;
-                claimBtn.textContent = '请先连接钱包';
-            }
-        }
-
-        // 加载模拟数据（当contract.js未加载时）
+        // 模拟数据加载
         function loadMockData() {
-            document.getElementById('userBalance').textContent = '1,000.00';
-            document.getElementById('burnPoints').textContent = '500.00';
-            document.getElementById('jackpotAmount').textContent = '100,000.00';
-            document.getElementById('dividendPool').textContent = '10.50';
-            document.getElementById('roundPool').textContent = '5,000';
+            document.getElementById('userBalance').textContent = '10,000.00';
+            document.getElementById('burnPoints').textContent = '5,000.00';
+            document.getElementById('jackpotAmount').textContent = '1,000,000.00';
+            document.getElementById('dividendPool').textContent = '50.00';
+            document.getElementById('roundPool').textContent = '20,000';
         }
 
-        // 其他功能函数
+        // 刷新数据
+        async function refreshData() {
+            showToast('刷新中...');
+            loadMockData();
+        }
+
+        // 页面切换
+        function switchPage(pageName) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById(pageName + 'Page').classList.add('active');
+            document.querySelector(`[data-page="${pageName}"]`).classList.add('active');
+        }
+
+        // 显示彩票详情
         function showLottery() {
             const detail = document.getElementById('lotteryDetail');
             const entry = document.getElementById('gameEntry');
             
-            if(detail.style.display === 'block') {
+            if (detail.style.display === 'block') {
                 detail.style.display = 'none';
                 entry.style.display = 'block';
             } else {
@@ -901,13 +806,7 @@
             }
         }
 
-        function setAmount(n) {
-            document.getElementById('ticketAmount').value = n;
-            document.querySelectorAll('.quick-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            calculateCost();
-        }
-
+        // 计算成本
         function calculateCost() {
             const amount = parseInt(document.getElementById('ticketAmount').value) || 0;
             const cost = amount * 100;
@@ -918,119 +817,83 @@
             document.getElementById('winChance').textContent = chance + '%';
         }
 
+        // 计算燃烧
         function calculateBurn() {
             const amount = parseInt(document.getElementById('burnAmount').value) || 0;
             document.getElementById('burnWeight').textContent = amount;
         }
 
-        function showToast(msg, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.className = 'toast ' + (type === 'error' ? 'error-toast' : 'success-toast');
-            toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', 3000);
+        // 购买彩票
+        function buyTickets() {
+            if (!window.AppState.isConnected) {
+                showToast('请先连接钱包');
+                return;
+            }
+            const amount = document.getElementById('ticketAmount').value;
+            showToast('购买 ' + amount + ' 张彩票');
         }
 
-        async function refreshData() {
-            if(!AppState.isConnected) {
-                showToast('请先连接钱包', 'error');
+        // 燃烧代币
+        function burnTokens() {
+            if (!window.AppState.isConnected) {
+                showToast('请先连接钱包');
                 return;
             }
-            
-            if(typeof ContractAPI !== 'undefined' && ContractAPI.refreshData) {
-                showToast('刷新中...');
-                await ContractAPI.refreshData();
-            } else {
-                showToast('合约未配置，使用模拟数据');
-                loadMockData();
-            }
-        }
-
-        async function buyTickets() {
-            if(!AppState.isConnected) {
-                showToast('请先连接钱包', 'error');
-                return;
-            }
-            
-            const amount = parseInt(document.getElementById('ticketAmount').value) || 0;
-            if(amount < 1) {
-                showToast('请输入有效数量', 'error');
-                return;
-            }
-            
-            if(typeof ContractAPI !== 'undefined' && ContractAPI.buyTickets) {
-                await ContractAPI.buyTickets(amount);
-            } else {
-                showToast('购买功能需要配置合约地址');
-                console.log('购买', amount, '张彩票');
-            }
-        }
-
-        async function burnTokens() {
-            if(!AppState.isConnected) {
-                showToast('请先连接钱包', 'error');
-                return;
-            }
-            
             const amount = document.getElementById('burnAmount').value;
-            if(!amount || amount <= 0) {
-                showToast('请输入燃烧数量', 'error');
+            showToast('燃烧 ' + amount + ' AI币');
+        }
+
+        // 领取分红
+        function claimDividend() {
+            if (!window.AppState.isConnected) {
+                showToast('请先连接钱包');
                 return;
             }
-            
-            if(typeof ContractAPI !== 'undefined' && ContractAPI.burnTokens) {
-                await ContractAPI.burnTokens(amount);
-            } else {
-                showToast('燃烧功能需要配置合约地址');
-                console.log('燃烧', amount, '个代币');
-            }
+            showToast('领取分红成功！');
         }
 
-        async function claimDividend() {
-            if(!AppState.isConnected) {
-                showToast('请先连接钱包', 'error');
-                return;
-            }
-            
-            if(typeof ContractAPI !== 'undefined' && ContractAPI.claimDividend) {
-                await ContractAPI.claimDividend();
-            } else {
-                showToast('领取功能需要配置合约地址');
-            }
-        }
+        // 初始化事件监听 - 确保DOM加载完成后绑定
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM加载完成，开始绑定事件...');
 
-        async function loadRank() {
-            if(typeof ContractAPI !== 'undefined' && ContractAPI.getRankList) {
-                const list = await ContractAPI.getRankList();
-                // ... 渲染代码
-            } else {
-                // 模拟数据
-                const container = document.getElementById('rankList');
-                container.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-weight: bold; color: #999; font-size: 13px;">
-                        <span>排名</span>
-                        <span>地址</span>
-                        <span>彩票数</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f8f9fa; font-size: 14px;">
-                        <span style="font-weight: bold; color: #e17055">#1</span>
-                        <span style="font-family: monospace;">0x377e...7777</span>
-                        <span style="font-weight: bold;">500</span>
-                    </div>
-                `;
-            }
-        }
+            // 连接钱包按钮 - 使用addEventListener而不是onclick
+            document.getElementById('connectBtn').addEventListener('click', connectWallet);
+            
+            // 开始参与按钮
+            document.getElementById('startBtn').addEventListener('click', showLottery);
+            
+            // 购买按钮
+            document.getElementById('buyBtn').addEventListener('click', buyTickets);
+            
+            // 燃烧按钮
+            document.getElementById('burnButton').addEventListener('click', burnTokens);
+            
+            // 领取按钮
+            document.getElementById('claimButton').addEventListener('click', claimDividend);
+            
+            // 数量选择
+            document.getElementById('ticketAmount').addEventListener('input', calculateCost);
+            document.getElementById('burnAmount').addEventListener('input', calculateBurn);
+            
+            // 快速选择按钮
+            document.querySelectorAll('.quick-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const amount = this.getAttribute('data-amount');
+                    document.getElementById('ticketAmount').value = amount;
+                    document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    calculateCost();
+                });
+            });
+            
+            // 底部导航
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const page = this.getAttribute('data-page');
+                    switchPage(page);
+                });
+            });
 
-        // 初始化
-        window.onload = function() {
-            console.log('页面加载完成');
-            
-            // 检查MetaMask是否已连接
-            if (window.ethereum && window.ethereum.selectedAddress) {
-                console.log('检测到已连接的钱包:', window.ethereum.selectedAddress);
-                connectWallet();
-            }
-            
             // 倒计时
             setInterval(() => {
                 const now = new Date();
@@ -1039,7 +902,9 @@
                 document.getElementById('countdown').textContent = 
                     `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
             }, 1000);
-        };
+
+            console.log('事件绑定完成');
+        });
     </script>
 </body>
 </html>
