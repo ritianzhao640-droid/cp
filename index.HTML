@@ -1,328 +1,825 @@
-// contract.js - AI彩票合约接口
-const CONFIG = {
-    // BSC主网配置（如需测试网请改为97）
-    RPC_URL: 'https://bsc-dataseed.binance.org/',
-    CHAIN_ID: 56,
-    
-    // !!! 请替换为你的真实合约地址 !!!
-    CONTRACTS: {
-        AI_TOKEN: '0x...',      // AI币合约地址
-        LOTTERY: '0x...',       // 彩票合约地址
-        DIVIDEND: '0x...',      // 分红合约地址
-        WBNB: '0xbb4CdB9CBd36B01bD1cBaEBF2C08d85d9182b33c'
-    },
-    
-    // ABI（请替换为真实编译后的ABI）
-    ABI: {
-        TOKEN: [
-            "function balanceOf(address) view returns (uint256)",
-            "function approve(address,uint256) returns (bool)",
-            "function allowance(address,address) view returns (uint256)",
-            "function transfer(address,uint256) returns (bool)",
-            "function transferFrom(address,address,uint256) returns (bool)"
-        ],
-        LOTTERY: [
-            "function buyTickets(uint256 amount) external",
-            "function burnTokens(uint256 amount) external",
-            "function getJackpot() view returns (uint256)",
-            "function getRoundInfo() view returns (uint256 round, uint256 pool, uint256 endTime)",
-            "function getMyTickets(address user) view returns (uint256[])",
-            "function getTotalTickets() view returns (uint256)"
-        ],
-        DIVIDEND: [
-            "function claimDividend() external",
-            "function getClaimable(address user) view returns (uint256)",
-            "function getBurnWeight(address user) view returns (uint256)",
-            "function getTotalBurned() view returns (uint256)",
-            "function dividendPool() view returns (uint256)"
-        ]
-    }
-};
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI彩票</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="contract.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-const AppState = {
-    provider: null,
-    signer: null,
-    userAddress: null,
-    contracts: {},
-    isConnected: false,
-    userData: {
-        balance: 0,
-        burnWeight: 0,
-        tickets: [],
-        claimable: 0
-    }
-};
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f6fa;
+            color: #333;
+            padding-bottom: 80px;
+        }
 
-const ContractAPI = {
-    connectWallet: async function() {
-        try {
-            if (!window.ethereum) {
-                alert('请安装MetaMask钱包');
-                return false;
-            }
-            
-            await window.ethereum.request({ method: 'eth_requestAccounts' });
-            
-            AppState.provider = new ethers.providers.Web3Provider(window.ethereum);
-            AppState.signer = AppState.provider.getSigner();
-            AppState.userAddress = await AppState.signer.getAddress();
-            AppState.isConnected = true;
-            
-            await initContracts();
-            updateWalletUI();
-            await this.refreshData();
-            
-            window.ethereum.on('accountsChanged', (accounts) => {
-                if (accounts.length === 0) {
-                    disconnect();
-                } else {
-                    AppState.userAddress = accounts[0];
-                    updateWalletUI();
-                    this.refreshData();
-                }
-            });
-            
-            window.ethereum.on('chainChanged', () => {
-                window.location.reload();
-            });
-            
-            return true;
-        } catch (error) {
-            console.error('连接失败:', error);
-            alert('连接钱包失败: ' + error.message);
-            return false;
+        .header {
+            background: #fff;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-    },
-    
-    refreshData: async function() {
-        if (!AppState.isConnected) return;
-        
-        try {
-            const balance = await AppState.contracts.token.balanceOf(AppState.userAddress);
-            AppState.userData.balance = ethers.utils.formatUnits(balance, 18);
-            
-            const jackpot = await AppState.contracts.lottery.getJackpot();
-            document.getElementById('jackpotAmount').textContent = 
-                parseFloat(ethers.utils.formatUnits(jackpot, 18)).toFixed(2);
-            
-            const roundInfo = await AppState.contracts.lottery.getRoundInfo();
-            document.getElementById('roundPool').textContent = 
-                parseFloat(ethers.utils.formatUnits(roundInfo.pool, 18)).toFixed(2);
-            
-            const myTickets = await AppState.contracts.lottery.getMyTickets(AppState.userAddress);
-            AppState.userData.tickets = myTickets;
-            updateTicketsUI(myTickets);
-            
-            const weight = await AppState.contracts.dividend.getBurnWeight(AppState.userAddress);
-            AppState.userData.burnWeight = ethers.utils.formatUnits(weight, 18);
-            document.getElementById('burnPoints').textContent = 
-                parseFloat(AppState.userData.burnWeight).toFixed(2);
-            
-            const claimable = await AppState.contracts.dividend.getClaimable(AppState.userAddress);
-            AppState.userData.claimable = ethers.utils.formatUnits(claimable, 18);
-            document.getElementById('claimableAmount').textContent = 
-                parseFloat(AppState.userData.claimable).toFixed(4);
-            
-            const divPool = await AppState.contracts.dividend.dividendPool();
-            document.getElementById('dividendPool').textContent = 
-                parseFloat(ethers.utils.formatUnits(divPool, 18)).toFixed(2);
-            
-            document.getElementById('userBalance').textContent = 
-                parseFloat(AppState.userData.balance).toFixed(2);
-            
-            updateButtonStates();
-            showToast('数据已刷新');
-        } catch (error) {
-            console.error('刷新数据失败:', error);
-            showToast('刷新失败，请重试');
-        }
-    },
-    
-    buyTickets: async function(amount) {
-        if (!AppState.isConnected) {
-            alert('请先连接钱包');
-            return;
-        }
-        
-        try {
-            const cost = ethers.utils.parseUnits((amount * 100).toString(), 18);
-            
-            const balance = await AppState.contracts.token.balanceOf(AppState.userAddress);
-            if (balance.lt(cost)) {
-                alert('AI币余额不足');
-                return;
-            }
-            
-            const allowance = await AppState.contracts.token.allowance(
-                AppState.userAddress, 
-                CONFIG.CONTRACTS.LOTTERY
-            );
-            
-            if (allowance.lt(cost)) {
-                showToast('正在授权...');
-                const approveTx = await AppState.contracts.token.approve(
-                    CONFIG.CONTRACTS.LOTTERY, 
-                    ethers.constants.MaxUint256
-                );
-                await approveTx.wait();
-            }
-            
-            showToast('正在购买...');
-            const tx = await AppState.contracts.lottery.buyTickets(amount);
-            await tx.wait();
-            
-            showToast('购买成功！');
-            await this.refreshData();
-        } catch (error) {
-            console.error('购买失败:', error);
-            alert('购买失败: ' + (error.data?.message || error.message));
-        }
-    },
-    
-    burnTokens: async function(amount) {
-        if (!AppState.isConnected) {
-            alert('请先连接钱包');
-            return;
-        }
-        
-        try {
-            const burnAmount = ethers.utils.parseUnits(amount.toString(), 18);
-            
-            const balance = await AppState.contracts.token.balanceOf(AppState.userAddress);
-            if (balance.lt(burnAmount)) {
-                alert('AI币余额不足');
-                return;
-            }
-            
-            showToast('正在燃烧...');
-            const tx = await AppState.contracts.lottery.burnTokens(burnAmount);
-            await tx.wait();
-            
-            showToast('燃烧成功！获得分红权重');
-            await this.refreshData();
-        } catch (error) {
-            console.error('燃烧失败:', error);
-            alert('燃烧失败: ' + (error.data?.message || error.message));
-        }
-    },
-    
-    claimDividend: async function() {
-        if (!AppState.isConnected) {
-            alert('请先连接钱包');
-            return;
-        }
-        
-        try {
-            const claimable = await AppState.contracts.dividend.getClaimable(AppState.userAddress);
-            if (claimable.eq(0)) {
-                alert('没有可领取的分红');
-                return;
-            }
-            
-            showToast('正在领取...');
-            const tx = await AppState.contracts.dividend.claimDividend();
-            await tx.wait();
-            
-            showToast('领取成功！');
-            await this.refreshData();
-        } catch (error) {
-            console.error('领取失败:', error);
-            alert('领取失败: ' + (error.data?.message || error.message));
-        }
-    },
-    
-    getRankList: async function() {
-        return [
-            { address: '0x377e...7777', count: 500 },
-            { address: '0x8a3c...f7777', count: 320 },
-            { address: '0x9a88...7777', count: 280 },
-            { address: '0x1234...5678', count: 150 },
-            { address: '0xabcd...efgh', count: 100 }
-        ];
-    }
-};
 
-async function initContracts() {
-    AppState.contracts.token = new ethers.Contract(
-        CONFIG.CONTRACTS.AI_TOKEN,
-        CONFIG.ABI.TOKEN,
-        AppState.signer
-    );
-    
-    AppState.contracts.lottery = new ethers.Contract(
-        CONFIG.CONTRACTS.LOTTERY,
-        CONFIG.ABI.LOTTERY,
-        AppState.signer
-    );
-    
-    AppState.contracts.dividend = new ethers.Contract(
-        CONFIG.CONTRACTS.DIVIDEND,
-        CONFIG.ABI.DIVIDEND,
-        AppState.signer
-    );
-}
+        .brand {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-function updateWalletUI() {
-    const statusDiv = document.getElementById('walletStatus');
-    if (AppState.isConnected && AppState.userAddress) {
-        const shortAddr = AppState.userAddress.slice(0, 6) + '...' + AppState.userAddress.slice(-4);
-        statusDiv.innerHTML = `
-            <span class="address-tag">${shortAddr}</span>
-            <button class="refresh-btn" onclick="ContractAPI.refreshData()">🔄 刷新</button>
-        `;
-    }
-}
+        .brand::before {
+            content: '🎯';
+            font-size: 24px;
+        }
 
-function updateTicketsUI(tickets) {
-    const count = tickets.length;
-    document.getElementById('myTicketCount').textContent = count;
-    
-    const container = document.getElementById('myTicketsList');
-    if (count === 0) {
-        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #999; padding: 20px;">暂无彩票，请购买后查看</div>';
-    } else {
-        container.innerHTML = tickets.map((id, index) => `
-            <div class="ticket-item">
-                <div class="ticket-id">#${id.toString().slice(-6)}</div>
-                <div style="font-size: 10px; opacity: 0.9;">彩票${index + 1}</div>
+        .wallet-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .address-tag {
+            background: #f0f0f0;
+            padding: 4px 12px;
+            border-radius: 12px;
+            color: #666;
+            font-family: monospace;
+        }
+
+        .connect-btn {
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .refresh-btn {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .stat-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2d3436;
+            margin-bottom: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .stat-unit {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 8px;
+            display: inline-block;
+            font-weight: 600;
+        }
+
+        .unit-green { color: #00b894; background: rgba(0,184,148,0.1); }
+        .unit-purple { color: #a29bfe; background: rgba(162,155,254,0.1); }
+        .unit-blue { color: #0984e3; background: rgba(9,132,227,0.1); }
+
+        .info-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 0 16px;
+            margin-bottom: 16px;
+        }
+
+        .info-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .price-card h3 {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .price-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3436;
+        }
+
+        .price-tip {
+            font-size: 11px;
+            color: #e17055;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        .pool-card {
+            background: linear-gradient(135deg, #fff9e6 0%, #fff5d6 100%);
+            border: 1px solid #ffeaa7;
+        }
+
+        .pool-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 12px;
+            color: #d63031;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .pool-amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #d63031;
+            margin-bottom: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .pool-unit {
+            font-size: 12px;
+            color: #e17055;
+        }
+
+        .game-section {
+            margin: 16px;
+            background: #2d3436;
+            border-radius: 24px;
+            padding: 32px 24px;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .game-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .game-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .game-subtitle {
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .start-btn {
+            background: white;
+            color: #2d3436;
+            border: none;
+            padding: 16px 48px;
+            border-radius: 28px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .start-btn:active {
+            transform: scale(0.98);
+        }
+
+        .lottery-detail {
+            display: none;
+            padding: 16px;
+            background: #fff;
+            margin: 0 16px 16px;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ticket-buy {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-label {
+            display: block;
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .input-wrap {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 0 12px;
+        }
+
+        .input-wrap input {
+            flex: 1;
+            border: none;
+            padding: 12px 0;
+            font-size: 16px;
+            outline: none;
+            background: transparent;
+        }
+
+        .input-unit {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .quick-amounts {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .quick-btn {
+            flex: 1;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .quick-btn.active {
+            background: #00b894;
+            color: white;
+            border-color: #00b894;
+        }
+
+        .buy-lottery-btn {
+            width: 100%;
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+
+        .buy-lottery-btn:disabled {
+            background: #ddd;
+            cursor: not-allowed;
+        }
+
+        .my-tickets {
+            padding: 16px;
+            background: #fff;
+            margin: 0 16px 16px;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .tickets-list {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .ticket-item {
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            padding: 12px 4px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+        }
+
+        .ticket-id {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 16px;
+            cursor: pointer;
+            color: #999;
+            font-size: 11px;
+            border: none;
+            background: none;
+        }
+
+        .nav-item.active {
+            color: #2d3436;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        .page {
+            display: none;
+            padding: 16px;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .claim-card {
+            background: linear-gradient(135deg, #fff9e6 0%, #fff5d6 100%);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 16px;
+            border: 1px solid #ffeaa7;
+        }
+
+        .claim-amount {
+            font-size: 36px;
+            font-weight: bold;
+            color: #d63031;
+            margin: 16px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .claim-btn-large {
+            width: 100%;
+            background: #d63031;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .burn-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .burn-btn-large {
+            width: 100%;
+            background: #e17055;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="brand">AI彩票</div>
+        <div class="wallet-status" id="walletStatus">
+            <button class="connect-btn" onclick="connectWallet()">连接钱包</button>
+        </div>
+    </div>
+
+    <div id="homePage" class="page active">
+        <div style="padding: 0 16px; margin-bottom: 8px; text-align: right;">
+            <button class="refresh-btn" onclick="refreshData()">
+                <span>🔄</span> 刷新数据
+            </button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">我的余额</div>
+                <div class="stat-value" id="userBalance">0.00</div>
+                <span class="stat-unit unit-green">AI币</span>
             </div>
-        `).join('');
-    }
-}
+            <div class="stat-card">
+                <div class="stat-label">燃烧积分</div>
+                <div class="stat-value" id="burnPoints">0.00</div>
+                <span class="stat-unit unit-purple">分红权重</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">AI奖池</div>
+                <div class="stat-value" id="jackpotAmount">0.00</div>
+                <span class="stat-unit unit-blue">游戏奖励</span>
+            </div>
+        </div>
 
-function updateButtonStates() {
-    const buyBtn = document.getElementById('buyBtn');
-    const burnBtn = document.getElementById('burnButton');
-    const claimBtn = document.getElementById('claimButton');
-    
-    if (AppState.isConnected) {
-        buyBtn.disabled = false;
-        buyBtn.textContent = '确认购买';
-        burnBtn.disabled = false;
-        burnBtn.textContent = '确认燃烧';
-        claimBtn.disabled = parseFloat(AppState.userData.claimable) <= 0;
-        claimBtn.textContent = claimBtn.disabled ? '无可领取分红' : '立即领取';
-    }
-}
+        <div class="info-section">
+            <div class="info-card price-card">
+                <h3>💰 今日币价</h3>
+                <div class="price-value" id="tokenPrice">--</div>
+                <div class="price-tip">新代币需等待收录(24-48小时)</div>
+            </div>
+            <div class="info-card pool-card">
+                <div class="pool-header">💎 分红奖池</div>
+                <div class="pool-amount" id="dividendPool">0.00</div>
+                <div class="pool-unit">WBNB 待分配</div>
+            </div>
+        </div>
 
-function disconnect() {
-    AppState.isConnected = false;
-    AppState.userAddress = null;
-    AppState.provider = null;
-    AppState.signer = null;
-    document.getElementById('walletStatus').innerHTML = 
-        '<button class="connect-btn" onclick="ContractAPI.connectWallet()">连接钱包</button>';
-}
+        <div class="game-section" id="gameEntry">
+            <div class="game-tag">🔥 热门彩票</div>
+            <div class="game-title">AI数字彩票</div>
+            <div class="game-subtitle">每30分钟开奖 | 赢取AI币奖励</div>
+            <button class="start-btn" onclick="showLottery()">立即参与</button>
+        </div>
 
-function showToast(msg) {
-    const toast = document.getElementById('toast');
-    if (toast) {
-        toast.textContent = msg;
-        toast.style.display = 'block';
-        setTimeout(() => toast.style.display = 'none', 2000);
-    }
-}
+        <div class="lottery-detail" id="lotteryDetail">
+            <div class="section-title">🎫 购买彩票</div>
+            <div class="ticket-buy">
+                <div class="input-group">
+                    <label class="input-label">购买数量 (100 AI币/张)</label>
+                    <div class="input-wrap">
+                        <input type="number" id="ticketAmount" value="1" min="1" onchange="calculateCost()">
+                        <span class="input-unit">张</span>
+                    </div>
+                </div>
+                <div class="quick-amounts">
+                    <button class="quick-btn" onclick="setAmount(1)">1张</button>
+                    <button class="quick-btn" onclick="setAmount(5)">5张</button>
+                    <button class="quick-btn" onclick="setAmount(10)">10张</button>
+                    <button class="quick-btn" onclick="setAmount(50)">50张</button>
+                </div>
+                <div style="margin-top: 12px; font-size: 13px; color: #666;">
+                    总计: <span id="totalCost" style="color: #00b894; font-weight: bold;">100</span> AI币
+                    <br>预计中奖概率: <span id="winChance" style="color: #e17055; font-weight: bold;">0%</span>
+                </div>
+                <button class="buy-lottery-btn" id="buyBtn" onclick="buyTickets()" disabled>
+                    连接钱包购买
+                </button>
+            </div>
 
-async function connectWallet() {
-    await ContractAPI.connectWallet();
-}
+            <div style="margin-top: 20px;">
+                <div class="section-title">🎯 我的本期彩票 (<span id="myTicketCount">0</span>张)</div>
+                <div class="tickets-list" id="myTicketsList">
+                    <div style="grid-column: 1/-1; text-align: center; color: #999; padding: 20px;">
+                        暂无彩票，请购买后查看
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; background: #f8f9fa; border-radius: 12px; padding: 16px; text-align: center;">
+                <div style="font-size: 13px; color: #999; margin-bottom: 8px;">下期开奖倒计时</div>
+                <div style="font-size: 24px; font-weight: bold; color: #2d3436; font-family: monospace;" id="countdown">30:00</div>
+                <div style="font-size: 12px; color: #999; margin-top: 8px;">
+                    本期奖池: <span id="roundPool" style="color: #00b894; font-weight: bold;">0</span> AI币
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="burnPage" class="page">
+        <div class="burn-card">
+            <div class="section-title">🔥 燃烧AI币获得分红权</div>
+            <div style="background: #fff5f5; border-left: 4px solid #e17055; padding: 12px; margin-bottom: 16px; border-radius: 0 8px 8px 0; font-size: 13px; color: #666;">
+                燃烧AI币可永久获得分红权重，从分红奖池领取WBNB奖励
+            </div>
+            <div class="input-group">
+                <label class="input-label">燃烧数量</label>
+                <div class="input-wrap">
+                    <input type="number" id="burnAmount" placeholder="请输入数量" oninput="calculateBurn()">
+                    <span class="input-unit">AI币</span>
+                </div>
+            </div>
+            <div style="font-size: 13px; color: #666; margin: 12px 0;">
+                获得分红权重: <span id="burnWeight" style="color: #e17055; font-weight: bold;">0</span>
+                <br>当前分红比例: <span id="dividendRatio" style="color: #00b894;">0%</span>
+            </div>
+            <button class="burn-btn-large" id="burnButton" onclick="burnTokens()" disabled>
+                连接钱包燃烧
+            </button>
+        </div>
+
+        <div class="burn-card">
+            <div class="section-title">📊 燃烧统计</div>
+            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
+                <span style="color: #666; font-size: 14px;">我的累计燃烧</span>
+                <span style="font-weight: bold;" id="totalBurned">0 AI币</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 12px 0;">
+                <span style="color: #666; font-size: 14px;">累计获得分红</span>
+                <span style="font-weight: bold; color: #d63031;" id="totalDividend">0 WBNB</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="claimPage" class="page">
+        <div class="claim-card">
+            <div style="font-size: 14px; color: #e17055; margin-bottom: 8px;">💎 可领取分红</div>
+            <div class="claim-amount" id="claimableAmount">0.00</div>
+            <div style="font-size: 12px; color: #999; margin-bottom: 16px;">WBNB</div>
+            <button class="claim-btn-large" id="claimButton" onclick="claimDividend()" disabled>
+                连接钱包领取
+            </button>
+        </div>
+
+        <div style="background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div class="section-title">📈 分红记录</div>
+            <div id="dividendHistory">
+                <div style="text-align: center; color: #999; padding: 40px 0; font-size: 14px;">
+                    暂无分红记录
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="rankPage" class="page">
+        <div style="background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div class="section-title">🏆 本期彩票排行</div>
+            <div id="rankList">
+                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-weight: bold; color: #999; font-size: 13px;">
+                    <span>排名</span>
+                    <span>地址</span>
+                    <span>彩票数</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="switchPage('home')">
+            <span class="nav-icon">🏠</span>
+            <span>首页</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('burn')">
+            <span class="nav-icon">🔥</span>
+            <span>燃烧</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('claim')">
+            <span class="nav-icon">💎</span>
+            <span>领分红</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('rank')">
+            <span class="nav-icon">🏆</span>
+            <span>排行</span>
+        </button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        function switchPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            if(page === 'home') {
+                document.getElementById('homePage').classList.add('active');
+                document.querySelectorAll('.nav-item')[0].classList.add('active');
+            } else if(page === 'burn') {
+                document.getElementById('burnPage').classList.add('active');
+                document.querySelectorAll('.nav-item')[1].classList.add('active');
+            } else if(page === 'claim') {
+                document.getElementById('claimPage').classList.add('active');
+                document.querySelectorAll('.nav-item')[2].classList.add('active');
+            } else if(page === 'rank') {
+                document.getElementById('rankPage').classList.add('active');
+                document.querySelectorAll('.nav-item')[3].classList.add('active');
+                loadRank();
+            }
+        }
+
+        function showLottery() {
+            const detail = document.getElementById('lotteryDetail');
+            const entry = document.getElementById('gameEntry');
+            
+            if(detail.style.display === 'block') {
+                detail.style.display = 'none';
+                entry.style.display = 'block';
+            } else {
+                detail.style.display = 'block';
+                entry.style.display = 'none';
+            }
+        }
+
+        function setAmount(n) {
+            document.getElementById('ticketAmount').value = n;
+            document.querySelectorAll('.quick-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            calculateCost();
+        }
+
+        function calculateCost() {
+            const amount = parseInt(document.getElementById('ticketAmount').value) || 0;
+            const cost = amount * 100;
+            document.getElementById('totalCost').textContent = cost;
+            
+            const total = parseInt(document.getElementById('roundPool').textContent.replace(/,/g, '')) || 10000;
+            const chance = total > 0 ? ((amount * 100) / total * 100).toFixed(2) : 0;
+            document.getElementById('winChance').textContent = chance + '%';
+        }
+
+        function calculateBurn() {
+            const amount = parseInt(document.getElementById('burnAmount').value) || 0;
+            document.getElementById('burnWeight').textContent = amount;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 2000);
+        }
+
+        async function refreshData() {
+            if(typeof ContractAPI !== 'undefined' && ContractAPI.refreshData) {
+                await ContractAPI.refreshData();
+            } else {
+                showToast('请先连接钱包');
+            }
+        }
+
+        async function buyTickets() {
+            if(typeof ContractAPI === 'undefined') return;
+            const amount = parseInt(document.getElementById('ticketAmount').value) || 0;
+            if(amount < 1) {
+                showToast('请输入有效数量');
+                return;
+            }
+            await ContractAPI.buyTickets(amount);
+        }
+
+        async function burnTokens() {
+            if(typeof ContractAPI === 'undefined') return;
+            const amount = document.getElementById('burnAmount').value;
+            if(!amount || amount <= 0) {
+                showToast('请输入燃烧数量');
+                return;
+            }
+            await ContractAPI.burnTokens(amount);
+        }
+
+        async function claimDividend() {
+            if(typeof ContractAPI === 'undefined') return;
+            await ContractAPI.claimDividend();
+        }
+
+        async function loadRank() {
+            if(typeof ContractAPI !== 'undefined' && ContractAPI.getRankList) {
+                const list = await ContractAPI.getRankList();
+                const container = document.getElementById('rankList');
+                container.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-weight: bold; color: #999; font-size: 13px;">
+                        <span>排名</span>
+                        <span>地址</span>
+                        <span>彩票数</span>
+                    </div>
+                `;
+                list.forEach((item, index) => {
+                    container.innerHTML += `
+                        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f8f9fa; font-size: 14px;">
+                            <span style="font-weight: bold; color: ${index < 3 ? '#e17055' : '#999'}">#${index + 1}</span>
+                            <span style="font-family: monospace;">${item.address}</span>
+                            <span style="font-weight: bold;">${item.count}</span>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        window.onload = function() {
+            setInterval(() => {
+                const now = new Date();
+                const minutes = 29 - (now.getMinutes() % 30);
+                const seconds = 59 - now.getSeconds();
+                document.getElementById('countdown').textContent = 
+                    `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
