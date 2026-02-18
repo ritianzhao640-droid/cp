@@ -16,7 +16,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #eef0f3;  /* 更柔和的背景 */
+            background: #eef0f3;
             color: #333;
             padding-bottom: 80px;
         }
@@ -49,15 +49,6 @@
             font-size: 13px;
         }
 
-        .address-tag {
-            background: #f0f0f0;
-            padding: 4px 12px;
-            border-radius: 12px;
-            color: #666;
-            font-family: monospace;
-            font-size: 12px;
-        }
-
         .connect-btn {
             background: #00b894;
             color: white;
@@ -67,10 +58,6 @@
             font-size: 13px;
             cursor: pointer;
             font-weight: bold;
-        }
-
-        .connect-btn:hover {
-            background: #00a383;
         }
 
         .connect-btn:disabled {
@@ -101,45 +88,47 @@
             background: linear-gradient(145deg, #ffffff, #f5f7fa);
             border-radius: 24px;
             box-shadow: 
-                8px 8px 16px rgba(174, 174, 192, 0.2),    /* 右下深影 */
-                -8px -8px 16px rgba(255, 255, 255, 0.7);  /* 左上浅影（模拟凸起） */
+                8px 8px 16px rgba(174, 174, 192, 0.2),
+                -8px -8px 16px rgba(255, 255, 255, 0.7);
             border: none;
             transition: all 0.2s ease;
         }
 
-        /* 按压效果（可选） */
         .stat-card:active,
         .info-card:active,
         .buy-lottery-btn:active {
             box-shadow: inset 4px 4px 8px rgba(174, 174, 192, 0.2), inset -4px -4px 8px #ffffff;
         }
 
-        /* ========== 修复网格布局 ========== */
+        /* ========== 布局修正 ========== */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 8px;  /* 减小间距，避免溢出 */
+            gap: 8px;
             padding: 16px;
         }
 
         .stat-card {
-            min-width: 0;               /* 防止内容撑开 */
-            word-break: break-word;     /* 长数字折行 */
-            padding: 12px 8px;
+            min-width: 0;
+            padding: 12px 4px;          /* 减少水平内边距 */
+            text-align: center;
         }
 
         .stat-label {
             font-size: 12px;
             color: #999;
-            margin-bottom: 8px;
+            margin-bottom: 4px;          /* 缩小间距 */
         }
 
         .stat-value {
-            font-size: 20px;
+            font-size: 18px;              /* 稍小，避免换行 */
             font-weight: bold;
             color: #2d3436;
             margin-bottom: 4px;
             font-family: 'Courier New', monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .stat-unit {
@@ -157,28 +146,31 @@
         .info-section {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;  /* 与stats-grid一致 */
+            gap: 8px;
             padding: 0 16px;
             margin-bottom: 16px;
         }
 
         .info-card {
-            padding: 16px;
+            padding: 12px;                /* 统一内边距 */
         }
 
         .price-card h3 {
             font-size: 14px;
             color: #999;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
         .price-value {
-            font-size: 24px;
+            font-size: 22px;               /* 适当缩小 */
             font-weight: bold;
             color: #2d3436;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .price-tip {
@@ -192,18 +184,21 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             color: #d63031;
             font-size: 14px;
             font-weight: 600;
         }
 
         .pool-amount {
-            font-size: 32px;
+            font-size: 26px;               /* 缩小 */
             font-weight: bold;
             color: #d63031;
             margin-bottom: 4px;
             font-family: 'Courier New', monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .pool-unit {
@@ -215,7 +210,7 @@
             margin: 16px;
             background: #2d3436;
             border-radius: 24px;
-            padding: 32px 24px;
+            padding: 24px 16px;            /* 调整内边距 */
             text-align: center;
             color: white;
             position: relative;
@@ -230,38 +225,30 @@
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 13px;
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 1;
+            margin-bottom: 16px;
         }
 
         .game-title {
-            font-size: 28px;
+            font-size: 24px;                /* 稍小 */
             font-weight: bold;
-            margin-bottom: 12px;
-            position: relative;
-            z-index: 1;
+            margin-bottom: 8px;
         }
 
         .game-subtitle {
-            font-size: 14px;
+            font-size: 13px;
             color: rgba(255,255,255,0.7);
-            margin-bottom: 24px;
-            position: relative;
-            z-index: 1;
+            margin-bottom: 20px;
         }
 
         .start-btn {
             background: white;
             color: #2d3436;
             border: none;
-            padding: 16px 48px;
+            padding: 14px 40px;
             border-radius: 28px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            position: relative;
-            z-index: 1;
         }
 
         .lottery-detail {
@@ -431,17 +418,20 @@
         }
 
         .claim-card {
-            padding: 24px;
+            padding: 20px;
             text-align: center;
             margin-bottom: 16px;
         }
 
         .claim-amount {
-            font-size: 36px;
+            font-size: 32px;
             font-weight: bold;
             color: #d63031;
-            margin: 16px 0;
+            margin: 12px 0;
             font-family: 'Courier New', monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .claim-btn-large {
@@ -458,7 +448,6 @@
 
         .claim-btn-large:disabled {
             background: #ccc;
-            cursor: not-allowed;
         }
 
         .burn-card {
@@ -481,7 +470,6 @@
 
         .burn-btn-large:disabled {
             background: #ccc;
-            cursor: not-allowed;
         }
 
         .toast {
@@ -499,16 +487,16 @@
         }
 
         .round-info-card {
-            padding: 20px;
+            padding: 16px;
             margin: 0 16px 16px;
-            color: #333;  /* 文字颜色改为深色，因为背景是白色 */
+            color: #333;
         }
 
         .round-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .round-number {
@@ -526,29 +514,32 @@
         .round-stats {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+            gap: 8px;
             text-align: center;
         }
 
         .round-stat {
             background: rgba(0,0,0,0.05);
-            padding: 12px;
+            padding: 8px;
             border-radius: 12px;
         }
 
         .round-stat-value {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .round-stat-label {
-            font-size: 11px;
+            font-size: 10px;
             opacity: 0.8;
         }
 
         .draw-section {
-            padding: 20px;
+            padding: 16px;
             margin: 0 16px 16px;
             text-align: center;
             color: #333;
@@ -559,13 +550,13 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             font-size: 14px;
             color: #fdcb6e;
         }
 
         .draw-countdown {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: bold;
             margin-bottom: 8px;
             font-family: 'Courier New', monospace;
@@ -591,7 +582,6 @@
 
         .draw-btn:disabled {
             background: #636e72;
-            cursor: not-allowed;
         }
 
         .draw-btn.active {
@@ -607,7 +597,7 @@
         }
 
         .history-section {
-            padding: 20px;
+            padding: 16px;
             margin: 0 16px 16px;
         }
 
@@ -701,19 +691,19 @@
             font-size: 14px;
         }
 
-        .status-active { background: #00b894 !important; }
+        .status-active { background: #00b894 !important; color: white !important; }
         .status-pending { background: #fdcb6e !important; color: #2d3436 !important; }
-        .status-drawn { background: #636e72 !important; }
+        .status-drawn { background: #636e72 !important; color: white !important; }
 
         /* ========== 双端适配 ========== */
         @media (min-width: 768px) {
             body {
-                max-width: 400px;        /* 更窄，更贴近手机卡片 */
+                max-width: 450px;          /* 适当加宽，避免内容过挤 */
                 margin: 0 auto;
                 background: #d9dde5;
             }
             .header, .bottom-nav {
-                max-width: 400px;
+                max-width: 450px;
                 left: 50%;
                 transform: translateX(-50%);
             }
