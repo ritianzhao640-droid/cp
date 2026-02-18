@@ -44,9 +44,23 @@
 
         .wallet-status {
             display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        .wallet-row {
+            display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 13px;
+        }
+
+        .wallet-tip {
+            font-size: 10px;
+            color: #999;
+            background: #f5f5f5;
+            padding: 2px 8px;
+            border-radius: 10px;
         }
 
         .connect-btn {
@@ -110,18 +124,18 @@
 
         .stat-card {
             min-width: 0;
-            padding: 12px 4px;          /* 减少水平内边距 */
+            padding: 12px 4px;
             text-align: center;
         }
 
         .stat-label {
             font-size: 12px;
             color: #999;
-            margin-bottom: 4px;          /* 缩小间距 */
+            margin-bottom: 4px;
         }
 
         .stat-value {
-            font-size: 18px;              /* 稍小，避免换行 */
+            font-size: 16px;
             font-weight: bold;
             color: #2d3436;
             margin-bottom: 4px;
@@ -152,7 +166,7 @@
         }
 
         .info-card {
-            padding: 12px;                /* 统一内边距 */
+            padding: 12px;
         }
 
         .price-card h3 {
@@ -165,7 +179,7 @@
         }
 
         .price-value {
-            font-size: 22px;               /* 适当缩小 */
+            font-size: 20px;
             font-weight: bold;
             color: #2d3436;
             white-space: nowrap;
@@ -191,7 +205,7 @@
         }
 
         .pool-amount {
-            font-size: 26px;               /* 缩小 */
+            font-size: 24px;
             font-weight: bold;
             color: #d63031;
             margin-bottom: 4px;
@@ -210,7 +224,7 @@
             margin: 16px;
             background: #2d3436;
             border-radius: 24px;
-            padding: 24px 16px;            /* 调整内边距 */
+            padding: 24px 16px;
             text-align: center;
             color: white;
             position: relative;
@@ -229,7 +243,7 @@
         }
 
         .game-title {
-            font-size: 24px;                /* 稍小 */
+            font-size: 24px;
             font-weight: bold;
             margin-bottom: 8px;
         }
@@ -695,10 +709,18 @@
         .status-pending { background: #fdcb6e !important; color: #2d3436 !important; }
         .status-drawn { background: #636e72 !important; color: white !important; }
 
+        /* 奖池上限提示 */
+        .pool-limit-tip {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+            text-align: center;
+        }
+
         /* ========== 双端适配 ========== */
         @media (min-width: 768px) {
             body {
-                max-width: 450px;          /* 适当加宽，避免内容过挤 */
+                max-width: 450px;
                 margin: 0 auto;
                 background: #d9dde5;
             }
@@ -715,15 +737,18 @@
     <div class="header">
         <div class="brand">🎯 AI彩票</div>
         <div class="wallet-status" id="walletStatus">
-            <button class="connect-btn" id="connectBtn">连接钱包</button>
+            <div class="wallet-row">
+                <button class="connect-btn" id="connectBtn">连接钱包</button>
+            </div>
+            <div class="wallet-tip" id="walletTip" style="display: none;">一切</div>
         </div>
     </div>
 
-    <div id="homePage" class="page active">
-        <div style="padding: 0 16px; margin-bottom: 8px; text-align: right;">
-            <button class="refresh-btn" id="refreshBtn" style="display:none;" onclick="ContractAPI.refreshData()">🔄 刷新数据</button>
-        </div>
+    <div style="padding: 0 16px; margin-bottom: 8px; text-align: right;">
+        <button class="refresh-btn" id="refreshBtn" style="display:none;" onclick="ContractAPI.refreshData()">🔄 刷新数据</button>
+    </div>
 
+    <div id="homePage" class="page active">
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">我的余额</div>
@@ -804,7 +829,7 @@
                     </div>
                 </div>
                 <div class="quick-amounts">
-                    <button class="quick-btn" data-amount="1">1张</button>
+                    <button class="quick-btn active" data-amount="1">1张</button>
                     <button class="quick-btn" data-amount="5">5张</button>
                     <button class="quick-btn" data-amount="10">10张</button>
                     <button class="quick-btn" data-amount="50">50张</button>
@@ -880,6 +905,7 @@
             <div style="font-size: 14px; color: #e17055; margin-bottom: 8px;">💎 可领取分红</div>
             <div class="claim-amount" id="claimableAmount">0.00</div>
             <div style="font-size: 12px; color: #999; margin-bottom: 16px;">AI币</div>
+            <div class="pool-limit-tip">奖池上限: 3000万 AI币</div>
             <button class="claim-btn-large" id="claimButton" disabled>请先连接钱包</button>
         </div>
 
@@ -952,19 +978,11 @@
             const drawSection = document.getElementById('drawSection');
             const myTicketCard = document.getElementById('myTicketCard');
             
-            if (detail.style.display === 'block') {
-                detail.style.display = 'none';
-                entry.style.display = 'block';
-                roundInfoCard.style.display = 'none';
-                drawSection.style.display = 'none';
-                myTicketCard.style.display = 'none';
-            } else {
-                detail.style.display = 'block';
-                entry.style.display = 'none';
-                roundInfoCard.style.display = 'block';
-                drawSection.style.display = 'block';
-                myTicketCard.style.display = 'block';
-            }
+            detail.style.display = 'block';
+            entry.style.display = 'none';
+            roundInfoCard.style.display = 'block';
+            drawSection.style.display = 'block';
+            myTicketCard.style.display = 'block';
         });
 
         // 快速选择
@@ -989,7 +1007,7 @@
             document.getElementById('totalCost').textContent = cost;
             if (typeof ContractAPI !== 'undefined') {
                 ContractAPI.updateWinChance();
-                ContractAPI.updateBuyButton?.();
+                if (ContractAPI.updateBuyButton) ContractAPI.updateBuyButton();
             }
         }
 
@@ -1060,7 +1078,19 @@
             setTimeout(() => toast.style.display = 'none', duration);
         };
 
+        // 全局刷新函数
+        window.refreshPage = function() {
+            if (typeof ContractAPI !== 'undefined' && ContractAPI.refreshData) {
+                ContractAPI.refreshData();
+                showToast('数据已刷新');
+            }
+        };
+
         document.addEventListener('DOMContentLoaded', function() {
+            // 初始化计算
+            calculateCost();
+            
+            // 自动连接已授权的钱包
             if (typeof ContractAPI !== 'undefined' && window.ethereum && window.ethereum.selectedAddress) {
                 ContractAPI.connectWallet();
             }
