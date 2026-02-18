@@ -1,4 +1,4 @@
-// contract.js - SwimLotteryPure 合约对接配置 (完整版)
+// contract.js - SwimLotteryPure 合约对接配置 (修复版)
 
 const CONFIG = {
     // BSC主网配置（测试网改为97）
@@ -7,7 +7,7 @@ const CONFIG = {
     
     // !!! 重要：替换为你的合约地址 !!!
     CONTRACTS: {
-        LOTTERY: '0xYourLotteryContractAddressHere',  // SwimLotteryPure合约地址
+        LOTTERY: '0xYourLotteryContractAddressHere',  // 这里必须改成你的真实合约地址！
     },
     
     // 合约完整ABI
@@ -54,8 +54,8 @@ const CONFIG = {
     },
     
     TOKEN_DECIMALS: 18,
-    TICKET_PRICE: 100,  // 100 AI币/张
-    ROUND_DURATION: 1800  // 30分钟 = 1800秒
+    TICKET_PRICE: 100,
+    ROUND_DURATION: 1800
 };
 
 // 全局状态
@@ -82,14 +82,12 @@ const AppState = {
         currentRoundTickets: 0,
         totalTickets: 0
     },
-    historyRounds: [],  // 历史轮次数据
+    historyRounds: [],
     isRefreshing: false
 };
 
-// ContractAPI 暴露给HTML调用
+// ContractAPI
 const ContractAPI = {
-    // ========== 基础功能 ==========
-    
     // 连接钱包
     connectWallet: async function() {
         try {
@@ -106,25 +104,31 @@ const ContractAPI = {
 
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
             
-            AppState.provider = new ethers.providers.Web3Provider(window.ethereum);
+            // 关键修复：禁用ENS解析
+            AppState.provider = new ethers.providers.Web3Provider(window.ethereum, {
+                name: 'bnb',
+                chainId: 56,
+                ensAddress: null
+            });
+            
             AppState.signer = AppState.provider.getSigner();
             AppState.userAddress = accounts[0];
             AppState.isConnected = true;
 
-            // 初始化合约
-            await this.initContracts();
-
-            // 更新UI
-            this.updateWalletUI();
+            // 检查网络
+            const network = await AppState.provider.getNetwork();
+            console.log('当前网络:', network);
             
-            // 加载数据
+            if (network.chainId !== 56 && network.chainId !== 97) {
+                alert('请切换到BSC主网或测试网');
+                throw new Error('网络错误');
+            }
+
+            await this.initContracts();
+            this.updateWalletUI();
             await this.refreshData();
-
-            // 启动定时刷新
-            this.startAutoRefresh();
-
-            // 监听事件
             this.setupEventListeners();
+            this.startAutoRefresh();
 
         } catch (error) {
             console.error('连接失败:', error);
@@ -139,83 +143,27 @@ const ContractAPI = {
 
     // 初始化合约
     initContracts: async function() {
-        AppState.contracts.lottery = new ethers.Contract(
-            CONFIG.CONTRACTS.LOTTERY,
-            CONFIG.ABI.LOTTERY,
-            AppState.signer
-        );
+        try {
+            AppState.contracts.lottery = new ethers.Contract(
+                CONFIG.CONTRACTS.LOTTERY,
+                CONFIG.ABI.LOTTERY,
+                AppState.signer
+            );
 
-        // 获取代币地址
-        const tokenAddress = await AppState.contracts.lottery.token();
-        AppState.contracts.token = new ethers.Contract(
-            tokenAddress,
-            CONFIG.ABI.TOKEN,
-            AppState.signer
-        );
+            const tokenAddress = await AppState.contracts.lottery.token();
+            console.log('代币地址:', tokenAddress);
+            
+            AppState.contracts.token = new ethers.Contract(
+                tokenAddress,
+                CONFIG.ABI.TOKEN,
+                AppState.signer
+            );
 
-        // 设置合约事件监听
-        this.setupContractEvents();
+        } catch (error) {
+            console.error('初始化合约失败:', error);
+            throw error;
+        }
     },
-
-    // 设置事件监听
-    setupEventListeners: function() {
-        window.ethereum.on('accountsChanged', (accounts) => {
-            if (accounts.length === 0) {
-                location.reload();
-            } else {
-                AppState.userAddress = accounts[0];
-                this.updateWalletUI();
-                this.refreshData();
-            }
-        });
-
-        window.ethereum.on('chainChanged', () => location.reload());
-    },
-
-    // 合约事件监听（实时更新）
-    setupContractEvents: function() {
-        // 监听购票事件
-        AppState.contracts.lottery.on("TicketBought", (user, amount, roundId, event) => {
-            console.log(`用户 ${user} 购买了第 ${roundId} 期彩票，数量: ${amount.toString()}`);
-            if (user.toLowerCase() === AppState.userAddress.toLowerCase()) {
-                this.refreshData();
-            } else {
-                // 其他人购票也刷新全局数据（奖池等）
-                this.refreshGlobalData();
-            }
-        });
-
-        // 监听燃烧事件
-        AppState.contracts.lottery.on("Burn", (user, amount, totalWeight, event) => {
-            console.log(`用户 ${user} 燃烧了 ${ethers.utils.formatUnits(amount, 18)} 代币`);
-            if (user.toLowerCase() === AppState.userAddress.toLowerCase()) {
-                this.refreshData();
-            }
-        });
-
-        // 监听开奖事件
-        AppState.contracts.lottery.on("RoundDrawn", (roundId, winners, shares, randomSeed, blockNumber, event) => {
-            console.log(`第 ${roundId} 期已开奖！`);
-            alert(`🎉 第 ${roundId} 期已开奖！`);
-            this.refreshData();
-            this.loadRoundHistory();  // 刷新历史记录
-        });
-
-        // 监听分红领取事件
-        AppState.contracts.lottery.on("DividendClaimed", (user, amount, remainingDebt, event) => {
-            if (user.toLowerCase() === AppState.userAddress.toLowerCase()) {
-                this.refreshData();
-            }
-        });
-
-        // 监听新轮次事件
-        AppState.contracts.lottery.on("NewRound", (roundId, prizePool, startTime, endTime, startBlock, event) => {
-            console.log(`新轮次开始: ${roundId}`);
-            this.refreshData();
-        });
-    },
-
-    // ========== 数据刷新 ==========
 
     // 刷新所有数据
     refreshData: async function() {
@@ -240,7 +188,7 @@ const ContractAPI = {
         }
     },
 
-    // 刷新全局数据（奖池等）
+    // 刷新全局数据
     refreshGlobalData: async function() {
         try {
             const stats = await AppState.contracts.lottery.getContractStats();
@@ -249,7 +197,6 @@ const ContractAPI = {
             const pendingTax = parseFloat(ethers.utils.formatUnits(stats._pendingTax, 18));
             const totalTaxDistributed = parseFloat(ethers.utils.formatUnits(stats._totalTaxDistributed, 18));
             
-            // 更新UI
             const jackpotEl = document.getElementById('jackpotAmount');
             const dividendEl = document.getElementById('dividendPool');
             const totalDistributedEl = document.getElementById('totalDistributed');
@@ -266,7 +213,6 @@ const ContractAPI = {
     // 刷新用户数据
     refreshUserData: async function() {
         try {
-            // 1. 获取用户信息
             const userInfo = await AppState.contracts.lottery.getUserInfo(AppState.userAddress);
             
             AppState.userData.burnWeight = parseFloat(ethers.utils.formatUnits(userInfo.burnWeight_, 18));
@@ -274,24 +220,20 @@ const ContractAPI = {
             AppState.userData.currentRoundTickets = parseFloat(ethers.utils.formatUnits(userInfo.currentRoundTickets, 18));
             AppState.userData.totalTickets = parseFloat(ethers.utils.formatUnits(userInfo.totalTickets_, 18));
 
-            // 2. 获取代币余额
             const balance = await AppState.contracts.token.balanceOf(AppState.userAddress);
             AppState.userData.balance = parseFloat(ethers.utils.formatUnits(balance, 18));
 
-            // 更新UI
             const burnPointsEl = document.getElementById('burnPoints');
             const myTicketCountEl = document.getElementById('myTicketCount');
             const claimableEl = document.getElementById('claimableAmount');
             const totalBurnedEl = document.getElementById('totalBurned');
             const balanceEl = document.getElementById('userBalance');
-            const totalTicketsEl = document.getElementById('totalTickets');
 
             if (burnPointsEl) burnPointsEl.textContent = AppState.userData.burnWeight.toFixed(2);
             if (myTicketCountEl) myTicketCountEl.textContent = Math.floor(AppState.userData.currentRoundTickets).toString();
             if (claimableEl) claimableEl.textContent = AppState.userData.pendingDividend.toFixed(4);
             if (totalBurnedEl) totalBurnedEl.textContent = AppState.userData.burnWeight.toFixed(2) + ' AI币';
             if (balanceEl) balanceEl.textContent = AppState.userData.balance.toFixed(2);
-            if (totalTicketsEl) totalTicketsEl.textContent = Math.floor(AppState.userData.totalTickets).toString();
 
         } catch (error) {
             console.error('刷新用户数据失败:', error);
@@ -314,39 +256,57 @@ const ContractAPI = {
                 participantCount: roundInfo.participantCount.toNumber()
             };
 
-            // 更新UI
             const roundPoolEl = document.getElementById('roundPool');
             const currentRoundEl = document.getElementById('currentRound');
             const participantCountEl = document.getElementById('participantCount');
             const roundStatusEl = document.getElementById('roundStatus');
+            const roundPoolDisplayEl = document.getElementById('roundPoolDisplay');
+            const totalTicketsDisplayEl = document.getElementById('totalTicketsDisplay');
 
             if (roundPoolEl) roundPoolEl.textContent = AppState.currentRound.prizePool.toFixed(2);
-            if (currentRoundEl) currentRoundEl.textContent = '#' + AppState.currentRound.roundId;
+            if (currentRoundEl) currentRoundEl.textContent = AppState.currentRound.roundId;
             if (participantCountEl) participantCountEl.textContent = AppState.currentRound.participantCount;
+            if (roundPoolDisplayEl) roundPoolDisplayEl.textContent = AppState.currentRound.prizePool.toFixed(0);
+            if (totalTicketsDisplayEl) totalTicketsDisplayEl.textContent = Math.floor(AppState.currentRound.totalTickets);
             
-            // 更新轮次状态显示
             if (roundStatusEl) {
                 if (AppState.currentRound.drawn) {
                     roundStatusEl.textContent = '已开奖';
-                    roundStatusEl.className = 'status-drawn';
+                    roundStatusEl.className = 'round-status-badge status-drawn';
                 } else if (AppState.currentRound.timeRemaining > 0) {
                     roundStatusEl.textContent = '进行中';
-                    roundStatusEl.className = 'status-active';
+                    roundStatusEl.className = 'round-status-badge status-active';
                 } else {
                     roundStatusEl.textContent = '等待开奖';
-                    roundStatusEl.className = 'status-pending';
+                    roundStatusEl.className = 'round-status-badge status-pending';
                 }
             }
 
-            // 更新倒计时
-            this.updateCountdown();
+            const drawBtn = document.getElementById('drawBtn');
+            const drawStatus = document.getElementById('drawStatus');
+            if (drawBtn && drawStatus) {
+                if (AppState.currentRound.drawn) {
+                    drawBtn.textContent = '本期已开奖';
+                    drawBtn.disabled = true;
+                    drawBtn.className = 'draw-btn';
+                    drawStatus.textContent = '等待下期开始';
+                } else if (AppState.currentRound.canDraw) {
+                    drawBtn.textContent = '立即开奖';
+                    drawBtn.disabled = false;
+                    drawBtn.className = 'draw-btn active';
+                    drawStatus.textContent = '点击按钮触发开奖';
+                } else {
+                    drawBtn.textContent = '等待开奖';
+                    drawBtn.disabled = true;
+                    drawBtn.className = 'draw-btn';
+                    drawStatus.textContent = `还需等待 ${Math.ceil(AppState.currentRound.timeRemaining / 60)} 分钟`;
+                }
+            }
 
         } catch (error) {
             console.error('刷新轮次信息失败:', error);
         }
     },
-
-    // ========== 核心功能 ==========
 
     // 购买彩票
     buyTickets: async function(ticketCount) {
@@ -362,20 +322,17 @@ const ContractAPI = {
                 return;
             }
 
-            // 计算代币数量（100 AI币/张）
             const tokenAmount = ethers.utils.parseUnits(
                 (count * CONFIG.TICKET_PRICE).toString(),
                 18
             );
 
-            // 检查余额
             const balance = await AppState.contracts.token.balanceOf(AppState.userAddress);
             if (balance.lt(tokenAmount)) {
                 alert(`AI币余额不足，需要 ${count * CONFIG.TICKET_PRICE} AI币`);
                 return;
             }
 
-            // 检查并授权
             const allowance = await AppState.contracts.token.allowance(
                 AppState.userAddress,
                 CONFIG.CONTRACTS.LOTTERY
@@ -393,16 +350,13 @@ const ContractAPI = {
                 alert('授权成功！');
             }
 
-            // 购买
-            const tx = await AppState.contracts.lottery.buyTicket(tokenAmount);
-            
-            // 显示 pending 状态
             const buyBtn = document.getElementById('buyBtn');
             if (buyBtn) {
                 buyBtn.textContent = '确认中...';
                 buyBtn.disabled = true;
             }
 
+            const tx = await AppState.contracts.lottery.buyTicket(tokenAmount);
             await tx.wait();
             
             alert(`成功购买 ${count} 张彩票！`);
@@ -414,7 +368,6 @@ const ContractAPI = {
             if (error.data?.message) msg = error.data.message;
             if (msg.includes('Round ended')) msg = '本期已结束，等待开奖';
             if (msg.includes('No existing stake')) msg = '合约尚未启动，请先燃烧代币激活';
-            if (msg.includes('transfer amount exceeds balance')) msg = '余额不足';
             alert('购买失败: ' + msg);
         } finally {
             const buyBtn = document.getElementById('buyBtn');
@@ -441,14 +394,12 @@ const ContractAPI = {
 
             const burnAmountWei = ethers.utils.parseUnits(amount.toString(), 18);
 
-            // 检查余额
             const balance = await AppState.contracts.token.balanceOf(AppState.userAddress);
             if (balance.lt(burnAmountWei)) {
                 alert('AI币余额不足');
                 return;
             }
 
-            // 检查并授权
             const allowance = await AppState.contracts.token.allowance(
                 AppState.userAddress,
                 CONFIG.CONTRACTS.LOTTERY
@@ -514,24 +465,16 @@ const ContractAPI = {
             await tx.wait();
             
             const amount = ethers.utils.formatUnits(claimable, 18);
-            alert(`成功领取 ${amount} WBNB 分红！`);
+            alert(`成功领取 ${amount} AI币 分红！`);
             await this.refreshData();
 
         } catch (error) {
             console.error('领取失败:', error);
             alert('领取失败: ' + (error.data?.message || error.message));
-        } finally {
-            const claimBtn = document.getElementById('claimButton');
-            if (claimBtn) {
-                claimBtn.disabled = AppState.userData.pendingDividend <= 0;
-                claimBtn.textContent = AppState.userData.pendingDividend > 0 ? '立即领取' : '无可领取分红';
-            }
         }
     },
 
-    // ========== 新增：开奖功能 ==========
-
-    // 执行开奖（任何人都可以调用，但必须在时间到后）
+    // 开奖
     drawRound: async function(roundId) {
         if (!AppState.isConnected) {
             alert('请先连接钱包');
@@ -539,7 +482,6 @@ const ContractAPI = {
         }
 
         try {
-            // 检查是否可以开奖
             const roundInfo = await AppState.contracts.lottery.getCurrentRoundInfo();
             
             if (roundInfo._roundId.toNumber() !== roundId) {
@@ -550,11 +492,6 @@ const ContractAPI = {
             if (roundInfo.drawn) {
                 alert('本期已经开奖过了');
                 return;
-            }
-
-            if (roundInfo.timeRemaining.toNumber() > 0) {
-                const confirmEarly = confirm('本期尚未结束，确定要提前开奖吗？');
-                if (!confirmEarly) return;
             }
 
             if (roundInfo.totalTickets.eq(0)) {
@@ -580,20 +517,11 @@ const ContractAPI = {
             if (error.data?.message) msg = error.data.message;
             if (msg.includes('Round not ended')) msg = '本期尚未结束';
             if (msg.includes('Already drawn')) msg = '已经开奖过了';
-            if (msg.includes('No tickets')) msg = '本期没有购票记录';
             alert('开奖失败: ' + msg);
-        } finally {
-            const drawBtn = document.getElementById('drawBtn');
-            if (drawBtn) {
-                drawBtn.textContent = '立即开奖';
-                drawBtn.disabled = false;
-            }
         }
     },
 
-    // ========== 新增：领奖功能 ==========
-
-    // 领取奖金（指定轮次）
+    // 领取奖金
     claimPrize: async function(roundId) {
         if (!AppState.isConnected) {
             alert('请先连接钱包');
@@ -601,21 +529,18 @@ const ContractAPI = {
         }
 
         try {
-            // 检查是否已中奖且未领取
             const hasClaimed = await AppState.contracts.lottery.hasClaimed(AppState.userAddress, roundId);
             if (hasClaimed) {
                 alert('该轮次奖金已领取');
                 return;
             }
 
-            // 获取该轮次信息
             const round = await AppState.contracts.lottery.rounds(roundId);
             if (!round.drawn) {
                 alert('该轮次尚未开奖');
                 return;
             }
 
-            // 获取中奖信息
             const [winners, shares] = await AppState.contracts.lottery.getRoundWinners(roundId);
             const myIndex = winners.findIndex(w => w.toLowerCase() === AppState.userAddress.toLowerCase());
             
@@ -625,13 +550,13 @@ const ContractAPI = {
             }
 
             const prizeAmount = ethers.utils.formatUnits(shares[myIndex], 18);
-            const confirmClaim = confirm(`您中了第 ${roundId} 期奖项，奖金 ${prizeAmount} WBNB，是否领取？`);
+            const confirmClaim = confirm(`您中了第 ${roundId} 期奖项，奖金 ${prizeAmount} AI币，是否领取？`);
             if (!confirmClaim) return;
 
             const tx = await AppState.contracts.lottery.claimPrize(roundId);
             await tx.wait();
             
-            alert(`🎉 成功领取 ${prizeAmount} WBNB 奖金！`);
+            alert(`🎉 成功领取 ${prizeAmount} AI币 奖金！`);
             await this.refreshData();
 
         } catch (error) {
@@ -640,13 +565,13 @@ const ContractAPI = {
         }
     },
 
-    // 检查并领取所有可领奖金（遍历最近10期）
+    // 批量领奖
     claimAllPrizes: async function() {
         if (!AppState.isConnected) return;
         
         try {
             const currentRound = AppState.currentRound.roundId;
-            const checkRounds = 10;  // 检查最近10期
+            const checkRounds = 10;
             const startRound = Math.max(1, currentRound - checkRounds);
             
             let claimedCount = 0;
@@ -676,7 +601,7 @@ const ContractAPI = {
 
             if (claimedCount > 0) {
                 const total = ethers.utils.formatUnits(totalClaimed, 18);
-                alert(`成功领取 ${claimedCount} 期奖金，共 ${total} WBNB！`);
+                alert(`成功领取 ${claimedCount} 期奖金，共 ${total} AI币！`);
                 await this.refreshData();
             } else {
                 alert('没有可领取的奖金');
@@ -688,9 +613,7 @@ const ContractAPI = {
         }
     },
 
-    // ========== 新增：历史记录 ==========
-
-    // 加载历史轮次
+    // 加载历史记录
     loadRoundHistory: async function() {
         if (!AppState.isConnected) return;
         
@@ -698,10 +621,11 @@ const ContractAPI = {
             const currentRoundId = AppState.currentRound.roundId;
             const history = [];
             
-            // 加载最近10期
             for (let i = Math.max(1, currentRoundId - 10); i < currentRoundId; i++) {
                 try {
                     const round = await AppState.contracts.lottery.rounds(i);
+                    if (!round.drawn) continue;
+                    
                     const [winners, shares] = await AppState.contracts.lottery.getRoundWinners(i);
                     
                     history.push({
@@ -717,7 +641,7 @@ const ContractAPI = {
                 }
             }
             
-            AppState.historyRounds = history.reverse();  // 最新的在前面
+            AppState.historyRounds = history.reverse();
             this.renderHistoryList();
             
         } catch (error) {
@@ -725,7 +649,7 @@ const ContractAPI = {
         }
     },
 
-    // 渲染历史记录列表（供HTML调用）
+    // 渲染历史记录
     renderHistoryList: function() {
         const container = document.getElementById('historyList');
         if (!container) return;
@@ -743,26 +667,32 @@ const ContractAPI = {
             return `
                 <div class="history-item ${isWinner ? 'won' : ''}">
                     <div class="round-info">
-                        <span class="round-id">第 ${round.roundId} 期</span>
-                        <span class="round-pool">${round.prizePool.toFixed(2)} WBNB</span>
+                        <div class="round-id">第 ${round.roundId} 期 ${isWinner ? '<span class="winner-badge">🎉 中奖</span>' : ''}</div>
+                        <div class="round-pool">奖池: ${round.prizePool.toFixed(2)} AI币</div>
                     </div>
                     <div class="round-detail">
-                        <span>${Math.floor(round.totalTickets)} 张票</span>
-                        <span>${round.winners.length} 位中奖者</span>
-                        ${isWinner ? '<span class="winner-badge">🎉 中奖</span>' : ''}
+                        <div>${Math.floor(round.totalTickets)} 张票</div>
+                        <div>${round.winners.length} 位中奖</div>
                     </div>
-                    ${round.drawn ? `
-                        <button onclick="ContractAPI.claimPrize(${round.roundId})" 
-                                class="claim-btn-small ${isWinner ? 'can-claim' : 'disabled'}">
-                            ${isWinner ? '领取奖金' : '未中奖'}
+                    ${isWinner ? `
+                        <button onclick="ContractAPI.claimPrize(${round.roundId})" class="claim-btn-small can-claim">
+                            领取
                         </button>
-                    ` : '<span class="pending">等待开奖</span>'}
+                    ` : ''}
                 </div>
             `;
         }).join('');
-    },
 
-    // ========== UI 更新 ==========
+        // 显示一键领取按钮
+        const hasUnclaimed = AppState.historyRounds.some(round => 
+            round.winners.some(w => w.toLowerCase() === AppState.userAddress.toLowerCase())
+        );
+        
+        const claimAllBtn = document.getElementById('claimAllBtn');
+        if (claimAllBtn) {
+            claimAllBtn.style.display = hasUnclaimed ? 'flex' : 'none';
+        }
+    },
 
     // 更新钱包UI
     updateWalletUI: function() {
@@ -772,9 +702,12 @@ const ContractAPI = {
         const shortAddr = AppState.userAddress.slice(0, 6) + '...' + AppState.userAddress.slice(-4);
         statusDiv.innerHTML = `
             <span class="address-tag">${shortAddr}</span>
-            <button class="refresh-btn" id="refreshBtn" onclick="ContractAPI.refreshData()">🔄 刷新</button>
-            <button class="disconnect-btn" onclick="location.reload()">断开</button>
+            <button class="refresh-btn" onclick="ContractAPI.refreshData()">🔄</button>
+            <button class="disconnect-btn" onclick="location.reload()">✕</button>
         `;
+        
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) refreshBtn.style.display = 'inline-block';
     },
 
     // 更新按钮状态
@@ -782,7 +715,6 @@ const ContractAPI = {
         const buyBtn = document.getElementById('buyBtn');
         const burnBtn = document.getElementById('burnButton');
         const claimBtn = document.getElementById('claimButton');
-        const drawBtn = document.getElementById('drawBtn');
 
         if (AppState.isConnected) {
             if (buyBtn) {
@@ -797,19 +729,8 @@ const ContractAPI = {
                 const hasDividend = AppState.userData.pendingDividend > 0;
                 claimBtn.disabled = !hasDividend;
                 claimBtn.textContent = hasDividend ? 
-                    `领取 ${AppState.userData.pendingDividend.toFixed(4)} WBNB` : 
+                    `领取 ${AppState.userData.pendingDividend.toFixed(4)} AI币` : 
                     '无可领取分红';
-            }
-            if (drawBtn) {
-                // 只有时间到了或者合约暂停才能开奖
-                const canDraw = AppState.currentRound.timeRemaining === 0 && 
-                               !AppState.currentRound.drawn &&
-                               AppState.currentRound.totalTickets > 0;
-                drawBtn.disabled = !canDraw;
-                drawBtn.textContent = AppState.currentRound.drawn ? 
-                    '本期已开奖' : 
-                    (canDraw ? '立即开奖' : '等待开奖');
-                drawBtn.className = canDraw ? 'draw-btn active' : 'draw-btn';
             }
         }
     },
@@ -832,59 +753,63 @@ const ContractAPI = {
         }
     },
 
-    // 更新倒计时
-    updateCountdown: function() {
-        const countdownEl = document.getElementById('countdown');
-        if (!countdownEl) return;
+    // 更新预计每日分红
+    updateDailyDividend: function(burnAmount) {
+        const totalWeight = AppState.userData.burnWeight + parseFloat(burnAmount || 0);
+        const pendingTax = parseFloat(document.getElementById('dividendPool')?.textContent || 0);
         
-        const now = Math.floor(Date.now() / 1000);
-        const remaining = AppState.currentRound.endTime - now;
+        const dailyDividendEl = document.getElementById('dailyDividend');
+        if (!dailyDividendEl) return;
         
-        if (remaining > 0) {
-            const mins = Math.floor(remaining / 60);
-            const secs = remaining % 60;
-            countdownEl.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-            countdownEl.className = 'countdown active';
+        if (totalWeight > 0 && pendingTax > 0) {
+            const dailyRelease = pendingTax * 0.1;
+            const myShare = (parseFloat(burnAmount || 0) / totalWeight) * dailyRelease;
+            dailyDividendEl.textContent = myShare.toFixed(4);
         } else {
-            countdownEl.textContent = '等待开奖';
-            countdownEl.className = 'countdown pending';
+            dailyDividendEl.textContent = '0';
         }
+    },
+
+    // 设置事件监听
+    setupEventListeners: function() {
+        window.ethereum.on('accountsChanged', (accounts) => {
+            if (accounts.length === 0) {
+                location.reload();
+            } else {
+                AppState.userAddress = accounts[0];
+                this.updateWalletUI();
+                this.refreshData();
+            }
+        });
+
+        window.ethereum.on('chainChanged', () => location.reload());
     },
 
     // 启动自动刷新
     startAutoRefresh: function() {
-        // 每秒更新倒计时
-        setInterval(() => this.updateCountdown(), 1000);
+        setInterval(() => {
+            if (AppState.currentRound.endTime > 0) {
+                const now = Math.floor(Date.now() / 1000);
+                const remaining = AppState.currentRound.endTime - now;
+                
+                const countdownEl = document.getElementById('countdown');
+                if (countdownEl) {
+                    if (remaining > 0) {
+                        const mins = Math.floor(remaining / 60);
+                        const secs = remaining % 60;
+                        countdownEl.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+                    } else {
+                        countdownEl.textContent = '00:00';
+                        if (remaining === 0) this.refreshRoundInfo();
+                    }
+                }
+            }
+        }, 1000);
         
-        // 每30秒刷新数据
         setInterval(() => this.refreshData(), 30000);
-    },
-
-    // ========== 工具函数 ==========
-
-    // 格式化地址
-    formatAddress: function(addr) {
-        return addr.slice(0, 6) + '...' + addr.slice(-4);
-    },
-
-    // 获取当前轮次ID
-    getCurrentRoundId: function() {
-        return AppState.currentRound.roundId;
-    },
-
-    // 检查是否中奖（指定轮次）
-    checkIfWon: async function(roundId) {
-        if (!AppState.isConnected) return false;
-        
-        try {
-            const [winners] = await AppState.contracts.lottery.getRoundWinners(roundId);
-            return winners.some(w => w.toLowerCase() === AppState.userAddress.toLowerCase());
-        } catch (e) {
-            return false;
-        }
     }
 };
 
-// 导出供HTML使用
+// 导出
 window.ContractAPI = ContractAPI;
 window.CONFIG = CONFIG;
