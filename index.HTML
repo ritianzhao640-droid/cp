@@ -1,1083 +1,585 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI彩票</title>
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-    <script src="contract.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #f5f6fa;
-            color: #333;
-            padding-bottom: 80px;
-        }
-
-        .header {
-            background: #fff;
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #f0f0f0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        /* 修复：brand只显示文字，去掉重复的伪类 */
-        .brand {
-            font-size: 20px;
-            font-weight: bold;
-            color: #2c3e50;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* 修复：wallet-status确保可见 */
-        .wallet-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-        }
-
-        .address-tag {
-            background: #f0f0f0;
-            padding: 4px 12px;
-            border-radius: 12px;
-            color: #666;
-            font-family: monospace;
-            font-size: 12px;
-        }
-
-        .connect-btn {
-            background: #00b894;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 16px;
-            font-size: 13px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .connect-btn:hover {
-            background: #00a383;
-        }
-
-        .connect-btn:disabled {
-            background: #ccc;
-        }
-
-        .refresh-btn {
-            background: #fff;
-            border: 1px solid #ddd;
-            padding: 6px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            color: #666;
-            cursor: pointer;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            padding: 16px;
-        }
-
-        .stat-card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 16px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: #999;
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #2d3436;
-            margin-bottom: 4px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .stat-unit {
-            font-size: 11px;
-            padding: 2px 8px;
-            border-radius: 8px;
-            display: inline-block;
-            font-weight: 600;
-        }
-
-        .unit-green { color: #00b894; background: rgba(0,184,148,0.1); }
-        .unit-purple { color: #a29bfe; background: rgba(162,155,254,0.1); }
-        .unit-blue { color: #0984e3; background: rgba(9,132,227,0.1); }
-
-        .info-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            padding: 0 16px;
-            margin-bottom: 16px;
-        }
-
-        .info-card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
-
-        .price-card h3 {
-            font-size: 14px;
-            color: #999;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .price-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #2d3436;
-        }
-
-        .price-tip {
-            font-size: 11px;
-            color: #e17055;
-            margin-top: 8px;
-            line-height: 1.4;
-        }
-
-        .pool-card {
-            background: linear-gradient(135deg, #fff9e6 0%, #fff5d6 100%);
-            border: 1px solid #ffeaa7;
-        }
-
-        .pool-header {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 12px;
-            color: #d63031;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .pool-amount {
-            font-size: 32px;
-            font-weight: bold;
-            color: #d63031;
-            margin-bottom: 4px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .pool-unit {
-            font-size: 12px;
-            color: #e17055;
-        }
-
-        .game-section {
-            margin: 16px;
-            background: #2d3436;
-            border-radius: 24px;
-            padding: 32px 24px;
-            text-align: center;
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .game-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: rgba(255,255,255,0.2);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 13px;
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .game-title {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 12px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .game-subtitle {
-            font-size: 14px;
-            color: rgba(255,255,255,0.7);
-            margin-bottom: 24px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .start-btn {
-            background: white;
-            color: #2d3436;
-            border: none;
-            padding: 16px 48px;
-            border-radius: 28px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            position: relative;
-            z-index: 1;
-        }
-
-        .lottery-detail {
-            display: none;
-            padding: 16px;
-            background: #fff;
-            margin: 0 16px 16px;
-            border-radius: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .ticket-buy {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-
-        .input-group {
-            margin-bottom: 12px;
-        }
-
-        .input-label {
-            display: block;
-            color: #666;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-
-        .input-wrap {
-            display: flex;
-            align-items: center;
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            padding: 0 12px;
-        }
-
-        .input-wrap input {
-            flex: 1;
-            border: none;
-            padding: 12px 0;
-            font-size: 16px;
-            outline: none;
-            background: transparent;
-        }
-
-        .input-unit {
-            color: #999;
-            font-size: 14px;
-        }
-
-        .quick-amounts {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .quick-btn {
-            flex: 1;
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            padding: 8px;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .quick-btn.active {
-            background: #00b894;
-            color: white;
-            border-color: #00b894;
-        }
-
-        .buy-lottery-btn {
-            width: 100%;
-            background: #00b894;
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 12px;
-        }
-
-        .buy-lottery-btn:disabled {
-            background: #ddd;
-            cursor: not-allowed;
-        }
-
-        .my-tickets {
-            padding: 16px;
-            background: #fff;
-            margin: 0 16px 16px;
-            border-radius: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
-
-        .tickets-list {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .ticket-item {
-            aspect-ratio: 1;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 8px;
-            padding: 12px 4px;
-            text-align: center;
-            color: white;
-            font-size: 12px;
-        }
-
-        .ticket-id {
-            font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 2px;
-        }
-
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #fff;
-            border-top: 1px solid #f0f0f0;
-            display: flex;
-            justify-content: space-around;
-            padding: 8px 0;
-            z-index: 100;
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 16px;
-            cursor: pointer;
-            color: #999;
-            font-size: 11px;
-            border: none;
-            background: none;
-        }
-
-        .nav-item.active {
-            color: #2d3436;
-        }
-
-        .nav-icon {
-            font-size: 24px;
-        }
-
-        .page {
-            display: none;
-            padding: 16px;
-        }
-
-        .page.active {
-            display: block;
-        }
-
-        .claim-card {
-            background: linear-gradient(135deg, #fff9e6 0%, #fff5d6 100%);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            margin-bottom: 16px;
-            border: 1px solid #ffeaa7;
-        }
-
-        .claim-amount {
-            font-size: 36px;
-            font-weight: bold;
-            color: #d63031;
-            margin: 16px 0;
-            font-family: 'Courier New', monospace;
-        }
-
-        .claim-btn-large {
-            width: 100%;
-            background: #d63031;
-            color: white;
-            border: none;
-            padding: 16px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .claim-btn-large:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        .burn-card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
-
-        .burn-btn-large {
-            width: 100%;
-            background: #e17055;
-            color: white;
-            border: none;
-            padding: 16px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 12px;
-        }
-
-        .burn-btn-large:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        .toast {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 16px 32px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 1000;
-            display: none;
-        }
-
-        /* 新增样式 */
-        .round-info-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            padding: 20px;
-            margin: 0 16px 16px;
-            color: white;
-        }
-
-        .round-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .round-number {
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        .round-status-badge {
-            background: rgba(255,255,255,0.2);
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-        }
-
-        .round-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            text-align: center;
-        }
-
-        .round-stat {
-            background: rgba(255,255,255,0.1);
-            padding: 12px;
-            border-radius: 12px;
-        }
-
-        .round-stat-value {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-
-        .round-stat-label {
-            font-size: 11px;
-            opacity: 0.8;
-        }
-
-        .draw-section {
-            background: linear-gradient(135deg, #2d3436 0%, #000000 100%);
-            border-radius: 16px;
-            padding: 20px;
-            margin: 0 16px 16px;
-            color: white;
-            text-align: center;
-        }
-
-        .draw-header {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            color: #fdcb6e;
-        }
-
-        .draw-countdown {
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 8px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .draw-status {
-            font-size: 12px;
-            color: #b2bec3;
-            margin-bottom: 16px;
-        }
-
-        .draw-btn {
-            width: 100%;
-            background: #00b894;
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .draw-btn:disabled {
-            background: #636e72;
-            cursor: not-allowed;
-        }
-
-        .draw-btn.active {
-            background: #fdcb6e;
-            color: #2d3436;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(253, 203, 110, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(253, 203, 110, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(253, 203, 110, 0); }
-        }
-
-        .history-section {
-            background: #fff;
-            border-radius: 16px;
-            padding: 20px;
-            margin: 0 16px 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
-
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .history-item:last-child {
-            border-bottom: none;
-        }
-
-        .history-item.won {
-            background: rgba(0, 184, 148, 0.05);
-            margin: 0 -12px;
-            padding: 12px;
-            border-radius: 8px;
-            border-left: 3px solid #00b894;
-        }
-
-        .round-info {
-            flex: 1;
-        }
-
-        .round-id {
-            font-weight: bold;
-            color: #2d3436;
-            font-size: 14px;
-        }
-
-        .round-pool {
-            font-size: 12px;
-            color: #00b894;
-            margin-top: 2px;
-        }
-
-        .round-detail {
-            text-align: right;
-            font-size: 12px;
-            color: #999;
-        }
-
-        .winner-badge {
-            background: #00b894;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            margin-left: 8px;
-        }
-
-        .claim-btn-small {
-            background: #d63031;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-            margin-left: 8px;
-        }
-
-        .claim-btn-small.can-claim {
-            background: #00b894;
-        }
-
-        .claim-all-btn {
-            width: 100%;
-            background: #00b894;
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .empty-history {
-            text-align: center;
-            color: #999;
-            padding: 40px 0;
-            font-size: 14px;
-        }
-
-        .status-active { background: #00b894 !important; }
-        .status-pending { background: #fdcb6e !important; color: #2d3436 !important; }
-        .status-drawn { background: #636e72 !important; }
-    </style>
-</head>
-<body>
-
-    <!-- 修复：header结构 -->
-    <div class="header">
-        <div class="brand">🎯 AI彩票</div>
-        <div class="wallet-status" id="walletStatus">
-            <button class="connect-btn" id="connectBtn">连接钱包</button>
-        </div>
-    </div>
-
-    <!-- 首页 -->
-    <div id="homePage" class="page active">
-        <div style="padding: 0 16px; margin-bottom: 8px; text-align: right;">
-            <button class="refresh-btn" id="refreshBtn" style="display:none;" onclick="ContractAPI.refreshData()">🔄 刷新数据</button>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">我的余额</div>
-                <div class="stat-value" id="userBalance">0.00</div>
-                <span class="stat-unit unit-green">AI币</span>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">燃烧积分</div>
-                <div class="stat-value" id="burnPoints">0.00</div>
-                <span class="stat-unit unit-purple">分红权重</span>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">AI奖池</div>
-                <div class="stat-value" id="jackpotAmount">0.00</div>
-                <span class="stat-unit unit-blue">游戏奖励</span>
-            </div>
-        </div>
-
-        <div class="info-section">
-            <div class="info-card price-card">
-                <h3>💰 分红奖池</h3>
-                <div class="price-value" id="dividendPool" style="color: #d63031;">0.00</div>
-                <div class="price-tip">燃烧AI币可获得分红权重</div>
-            </div>
-            <div class="info-card pool-card">
-                <div class="pool-header">💎 累计分红</div>
-                <div class="pool-amount" id="totalDistributed">0.00</div>
-                <div class="pool-unit">AI币 已发放</div>
-            </div>
-        </div>
-
-        <!-- 当前轮次信息 -->
-        <div class="round-info-card" id="roundInfoCard" style="display: none;">
-            <div class="round-header">
-                <div class="round-number">第 <span id="currentRound">0</span> 期</div>
-                <div class="round-status-badge" id="roundStatus">等待开奖</div>
-            </div>
-            <div class="round-stats">
-                <div class="round-stat">
-                    <div class="round-stat-value" id="roundPoolDisplay">0</div>
-                    <div class="round-stat-label">奖池(AI币)</div>
-                </div>
-                <div class="round-stat">
-                    <div class="round-stat-value" id="totalTicketsDisplay">0</div>
-                    <div class="round-stat-label">总票数</div>
-                </div>
-                <div class="round-stat">
-                    <div class="round-stat-value" id="participantCount">0</div>
-                    <div class="round-stat-label">参与人数</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 开奖区域 -->
-        <div class="draw-section" id="drawSection" style="display: none;">
-            <div class="draw-header">
-                <span>⏰</span>
-                <span>下期开奖倒计时</span>
-            </div>
-            <div class="draw-countdown" id="countdown">30:00</div>
-            <div class="draw-status" id="drawStatus">购买彩票参与抽奖</div>
-            <button class="draw-btn" id="drawBtn" disabled>等待开奖</button>
-        </div>
-
-        <div class="game-section" id="gameEntry">
-            <div class="game-tag">🔥 热门彩票</div>
-            <div class="game-title">AI数字彩票</div>
-            <div class="game-subtitle">每30分钟开奖 | 赢取AI币奖励</div>
-            <button class="start-btn" id="startBtn">立即参与</button>
-        </div>
-
-        <div class="lottery-detail" id="lotteryDetail">
-            <div class="section-title">🎫 购买彩票</div>
-            <div class="ticket-buy">
-                <div class="input-group">
-                    <label class="input-label">购买数量 (100 AI币/张)</label>
-                    <div class="input-wrap">
-                        <input type="number" id="ticketAmount" value="1" min="1">
-                        <span class="input-unit">张</span>
-                    </div>
-                </div>
-                <div class="quick-amounts">
-                    <button class="quick-btn" data-amount="1">1张</button>
-                    <button class="quick-btn" data-amount="5">5张</button>
-                    <button class="quick-btn" data-amount="10">10张</button>
-                    <button class="quick-btn" data-amount="50">50张</button>
-                </div>
-                <div style="margin-top: 12px; font-size: 13px; color: #666;">
-                    总计: <span id="totalCost" style="color: #00b894; font-weight: bold;">100</span> AI币
-                    <br>预计中奖概率: <span id="winChance" style="color: #e17055; font-weight: bold;">0%</span>
-                </div>
-                <button class="buy-lottery-btn" id="buyBtn" disabled>请先连接钱包</button>
-            </div>
-        </div>
-
-        <!-- 我的本期彩票 -->
-        <div class="my-tickets" id="myTicketCard" style="display: none;">
-            <div class="section-title">
-                🎯 我的本期彩票 
-                <span style="font-size: 12px; color: #999; font-weight: normal;">
-                    (<span id="myTicketCount">0</span>张)
-                </span>
-            </div>
-            <div class="tickets-list" id="myTicketsList">
-                <div style="grid-column: 1/-1; text-align: center; color: #999; padding: 20px;">
-                    暂无彩票，请购买后查看
-                </div>
-            </div>
-        </div>
-
-        <!-- 历史记录 -->
-        <div class="history-section">
-            <div class="section-title">📜 历史开奖</div>
-            <div id="historyList">
-                <div class="empty-history">暂无历史记录</div>
-            </div>
-            <button class="claim-all-btn" id="claimAllBtn" onclick="ContractAPI.claimAllPrizes()" style="display: none;">
-                🎁 一键领取所有奖金
-            </button>
-        </div>
-    </div>
-
-    <!-- 燃烧页面 -->
-    <div id="burnPage" class="page">
-        <div class="burn-card">
-            <div class="section-title">🔥 燃烧AI币获得分红权</div>
-            <div style="background: #fff5f5; border-left: 4px solid #e17055; padding: 12px; margin-bottom: 16px; border-radius: 0 8px 8px 0; font-size: 13px; color: #666;">
-                燃烧AI币可永久获得分红权重，从分红奖池领取AI币奖励
-            </div>
-            <div class="input-group">
-                <label class="input-label">燃烧数量</label>
-                <div class="input-wrap">
-                    <input type="number" id="burnAmount" placeholder="请输入数量">
-                    <span class="input-unit">AI币</span>
-                </div>
-            </div>
-            <div style="font-size: 13px; color: #666; margin: 12px 0;">
-                获得分红权重: <span id="burnWeight" style="color: #e17055; font-weight: bold;">0</span>
-                <br>预计每日分红: <span id="dailyDividend" style="color: #00b894; font-weight: bold;">0</span> AI币
-            </div>
-            <button class="burn-btn-large" id="burnButton" disabled>请先连接钱包</button>
-        </div>
-
-        <div class="burn-card">
-            <div class="section-title">📊 燃烧统计</div>
-            <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
-                <span style="color: #666; font-size: 14px;">我的累计燃烧</span>
-                <span style="font-weight: bold;" id="totalBurned">0 AI币</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding: 12px 0;">
-                <span style="color: #666; font-size: 14px;">累计获得分红</span>
-                <span style="font-weight: bold; color: #d63031;" id="totalDividend">0 AI币</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- 领分红页面 -->
-    <div id="claimPage" class="page">
-        <div class="claim-card">
-            <div style="font-size: 14px; color: #e17055; margin-bottom: 8px;">💎 可领取分红</div>
-            <div class="claim-amount" id="claimableAmount">0.00</div>
-            <div style="font-size: 12px; color: #999; margin-bottom: 16px;">AI币</div>
-            <button class="claim-btn-large" id="claimButton" disabled>请先连接钱包</button>
-        </div>
-
-        <div style="background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-            <div class="section-title">📈 分红记录</div>
-            <div id="dividendHistory">
-                <div style="text-align: center; color: #999; padding: 40px 0; font-size: 14px;">
-                    暂无分红记录
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 排行页面 -->
-    <div id="rankPage" class="page">
-        <div style="background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-            <div class="section-title">🏆 本期彩票排行</div>
-            <div id="rankList">
-                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-weight: bold; color: #999; font-size: 13px;">
-                    <span>排名</span>
-                    <span>地址</span>
-                    <span>彩票数</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="bottom-nav">
-        <button class="nav-item active" data-page="home">
-            <span class="nav-icon">🏠</span>
-            <span>首页</span>
-        </button>
-        <button class="nav-item" data-page="burn">
-            <span class="nav-icon">🔥</span>
-            <span>燃烧</span>
-        </button>
-        <button class="nav-item" data-page="claim">
-            <span class="nav-icon">💎</span>
-            <span>领分红</span>
-        </button>
-        <button class="nav-item" data-page="rank">
-            <span class="nav-icon">🏆</span>
-            <span>排行</span>
-        </button>
-    </div>
-
-    <div class="toast" id="toast"></div>
-
-    <script>
-        // 页面切换
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', function() {
-                const page = this.getAttribute('data-page');
-                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-                document.getElementById(page + 'Page').classList.add('active');
-                this.classList.add('active');
-                
-                if (typeof ContractAPI !== 'undefined' && ContractAPI.refreshData) {
-                    ContractAPI.refreshData();
-                }
-                if (page === 'home' && typeof ContractAPI !== 'undefined' && ContractAPI.loadRoundHistory) {
-                    ContractAPI.loadRoundHistory();
-                }
-            });
-        });
-
-        // 显示彩票详情
-        document.getElementById('startBtn').addEventListener('click', function() {
-            const detail = document.getElementById('lotteryDetail');
-            const entry = document.getElementById('gameEntry');
-            const roundInfoCard = document.getElementById('roundInfoCard');
-            const drawSection = document.getElementById('drawSection');
-            const myTicketCard = document.getElementById('myTicketCard');
-            
-            if (detail.style.display === 'block') {
-                detail.style.display = 'none';
-                entry.style.display = 'block';
-                roundInfoCard.style.display = 'none';
-                drawSection.style.display = 'none';
-                myTicketCard.style.display = 'none';
-            } else {
-                detail.style.display = 'block';
-                entry.style.display = 'none';
-                roundInfoCard.style.display = 'block';
-                drawSection.style.display = 'block';
-                myTicketCard.style.display = 'block';
-            }
-        });
-
-        // 快速选择
-        document.querySelectorAll('.quick-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const amount = this.getAttribute('data-amount');
-                document.getElementById('ticketAmount').value = amount;
-                document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                calculateCost();
-            });
-        });
-
-        // 计算成本
-        function calculateCost() {
-            const amount = parseInt(document.getElementById('ticketAmount').value) || 0;
-            const cost = amount * 100;
-            document.getElementById('totalCost').textContent = cost;
-            
-            if (typeof ContractAPI !== 'undefined' && ContractAPI.updateWinChance) {
-                ContractAPI.updateWinChance();
-            }
-        }
-
-        document.getElementById('ticketAmount').addEventListener('input', calculateCost);
+// contract.js
+// SwimLotteryPure 合约前端交互模块 (ethers.js v5)
+
+// ==================== 配置 ====================
+const CONFIG = {
+    // 请替换为实际部署的合约地址
+    contractAddress: '0x...',
+    // 请替换为实际代币地址（AI币）
+    tokenAddress: '0x...',
+    // 请替换为实际WBNB地址（BSC主网：0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c）
+    wbnbAddress: '0x...',
+    // 链ID (BSC主网56，测试网97)
+    chainId: 97,
+    // RPC URL (可选，用于只读操作)
+    rpcUrl: 'https://data-seed-prebsc-1-s1.binance.org:8545/'
+};
+
+// ==================== ABI ====================
+// 从合约编译后提取的ABI（仅包含用到的函数和事件）
+const CONTRACT_ABI = [
+    // ---------- 视图函数 ----------
+    "function token() view returns (address)",
+    "function wbnb() view returns (address)",
+    "function tokenSet() view returns (bool)",
+    "function burnWeight(address) view returns (uint256)",
+    "function totalBurnWeight() view returns (uint256)",
+    "function pendingTax() view returns (uint256)",
+    "function accTaxPerShare() view returns (uint256)",
+    "function userAccTaxPerShare(address) view returns (uint256)",
+    "function unclaimedDividend(address) view returns (uint256)",
+    "function totalStaked() view returns (uint256)",
+    "function tickets(address) view returns (uint256)",
+    "function roundId() view returns (uint256)",
+    "function prizeReleaseRate() view returns (uint256)",
+    "function totalUnclaimedPrizes() view returns (uint256)",
+    "function getWBNBBalance() view returns (uint256)",
+    "function getCurrentRoundInfo() view returns (uint256 roundId, uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, bool drawn, uint256 timeRemaining, bool canDraw)",
+    "function getRoundInfo(uint256 _roundId) view returns (uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, bool drawn, address[] memory winners, uint256[] memory winnerShares)",
+    "function getUserPrizeInfo(uint256 _roundId, address user) view returns (uint256 totalWon, uint256 claimedCount, uint256 unclaimedCount, uint256 unclaimedAmount)",
+    "function pendingDividend(address user) view returns (uint256)",
+    
+    // ---------- 写函数 ----------
+    "function setToken(address _token) external",
+    "function burnForDividend(uint256 amount) external",
+    "function buyTicket(uint256 amount) external",
+    "function claimTaxDividend() external",
+    "function drawRound(uint256 _roundId) external",
+    "function claimPrize(uint256 _roundId) external",
+    
+    // ---------- 事件 ----------
+    "event TokenSet(address indexed token, address indexed wbnb)",
+    "event Burn(address indexed user, uint256 amount, uint256 cachedDividend)",
+    "event TicketBought(address indexed user, uint256 amount, uint256 roundId)",
+    "event DividendClaimed(address indexed user, uint256 wbnbAmount)",
+    "event NewRound(uint256 indexed roundId, uint256 prizePool, uint256 startTime, uint256 endTime)",
+    "event RoundDrawn(uint256 indexed roundId, address[] winners, uint256[] shares, uint256 randomSeed)",
+    "event PrizeClaimed(address indexed user, uint256 indexed roundId, uint256 amount, uint256 claimCount)",
+    "event TaxReceived(uint256 bnbAmount)",
+    "event DividendCached(address indexed user, uint256 amount)"
+];
+
+// ERC20 ABI (简化)
+const ERC20_ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function transfer(address to, uint256 amount) returns (bool)",
+    "function approve(address spender, uint256 amount) returns (bool)",
+    "function allowance(address owner, address spender) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function symbol() view returns (string)",
+    "event Transfer(address indexed from, address indexed to, uint256 value)"
+];
+
+// ==================== 状态 ====================
+let provider, signer, contract, tokenContract;
+let currentAccount = null;
+let isConnected = false;
+let tokenDecimals = 18; // 默认，实际会获取
+let tokenSymbol = 'AI';
+
+// 缓存数据
+let cachedRounds = {};   // roundId => 轮次信息
+let userRounds = [];     // 用户参与过的轮次（用于历史记录）
+
+// ==================== 工具函数 ====================
+function showToast(msg, duration = 3000) {
+    if (window.showToast) window.showToast(msg, duration);
+    else alert(msg);
+}
+
+function formatAmount(amount, decimals = 18) {
+    if (!amount) return '0';
+    return ethers.utils.formatUnits(amount, decimals);
+}
+
+function parseAmount(amountStr, decimals = 18) {
+    return ethers.utils.parseUnits(amountStr, decimals);
+}
+
+// ==================== 初始化 ====================
+async function initProvider() {
+    if (window.ethereum) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+    } else {
+        provider = new ethers.providers.JsonRpcProvider(CONFIG.rpcUrl);
+        showToast('未检测到钱包，使用只读模式', 4000);
+    }
+    return provider;
+}
+
+async function initContract() {
+    if (!provider) await initProvider();
+    contract = new ethers.Contract(CONFIG.contractAddress, CONTRACT_ABI, provider);
+    // 代币合约
+    tokenContract = new ethers.Contract(CONFIG.tokenAddress, ERC20_ABI, provider);
+    try {
+        tokenDecimals = await tokenContract.decimals();
+        tokenSymbol = await tokenContract.symbol();
+    } catch (e) {
+        console.warn('获取代币信息失败', e);
+    }
+}
+
+// ==================== 连接钱包 ====================
+async function connectWallet() {
+    if (!window.ethereum) {
+        showToast('请安装MetaMask');
+        return;
+    }
+    try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        currentAccount = await signer.getAddress();
+        isConnected = true;
+
+        // 更新UI
+        document.getElementById('connectBtn').innerText = shortenAddress(currentAccount);
+        document.querySelector('.refresh-btn').style.display = 'inline-block';
         
-        document.getElementById('burnAmount').addEventListener('input', function() {
-            const amount = parseInt(this.value) || 0;
-            document.getElementById('burnWeight').textContent = amount;
-            if (typeof ContractAPI !== 'undefined' && ContractAPI.updateDailyDividend) {
-                ContractAPI.updateDailyDividend(amount);
-            }
-        });
+        // 初始化合约（带signer）
+        contract = contract.connect(signer);
+        tokenContract = tokenContract.connect(signer);
 
-        // 连接钱包按钮
-        document.getElementById('connectBtn').addEventListener('click', function() {
-            if (typeof ContractAPI !== 'undefined' && ContractAPI.connectWallet) {
-                ContractAPI.connectWallet();
-            } else {
-                alert('合约配置加载失败，请检查contract.js');
-            }
-        });
-
-        // 购买按钮
-        document.getElementById('buyBtn').addEventListener('click', function() {
-            if (typeof ContractAPI !== 'undefined' && ContractAPI.buyTickets) {
-                const amount = parseInt(document.getElementById('ticketAmount').value) || 0;
-                if (amount > 0) {
-                    ContractAPI.buyTickets(amount);
-                } else {
-                    alert('请输入有效的购买数量');
-                }
-            }
-        });
-
-        // 燃烧按钮
-        document.getElementById('burnButton').addEventListener('click', function() {
-            if (typeof ContractAPI !== 'undefined' && ContractAPI.burnTokens) {
-                const amount = document.getElementById('burnAmount').value;
-                if (parseFloat(amount) > 0) {
-                    ContractAPI.burnTokens(amount);
-                } else {
-                    alert('请输入有效的燃烧数量');
-                }
-            }
-        });
-
-        // 领取分红按钮
-        document.getElementById('claimButton').addEventListener('click', function() {
-            if (typeof ContractAPI !== 'undefined' && ContractAPI.claimDividend) {
-                ContractAPI.claimDividend();
-            }
-        });
-
-        // 开奖按钮
-        document.getElementById('drawBtn').addEventListener('click', function() {
-            if (typeof ContractAPI !== 'undefined' && ContractAPI.drawRound) {
-                const roundId = parseInt(document.getElementById('currentRound').textContent);
-                if (roundId > 0) {
-                    ContractAPI.drawRound(roundId);
-                }
-            }
-        });
-
-        // 显示提示
-        function showToast(msg, duration = 2000) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', duration);
+        // 检查网络
+        const network = await provider.getNetwork();
+        if (network.chainId !== CONFIG.chainId) {
+            showToast(`请切换到链ID ${CONFIG.chainId}`, 5000);
         }
 
-        window.showToast = showToast;
+        // 刷新数据
+        await refreshData();
+        await loadRoundHistory();
 
-        // 初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof ContractAPI !== 'undefined' && window.ethereum && window.ethereum.selectedAddress) {
-                ContractAPI.connectWallet();
+        // 监听账户变化
+        window.ethereum.on('accountsChanged', (accounts) => {
+            if (accounts.length === 0) {
+                disconnectWallet();
+            } else {
+                currentAccount = accounts[0];
+                document.getElementById('connectBtn').innerText = shortenAddress(currentAccount);
+                refreshData();
             }
         });
-    </script>
-</body>
-</html>
+
+    } catch (e) {
+        console.error(e);
+        showToast('连接钱包失败: ' + e.message);
+    }
+}
+
+function disconnectWallet() {
+    isConnected = false;
+    currentAccount = null;
+    signer = null;
+    document.getElementById('connectBtn').innerText = '连接钱包';
+    document.querySelector('.refresh-btn').style.display = 'none';
+    // 清空数据
+    refreshData(); // 会显示默认值
+}
+
+function shortenAddress(addr) {
+    return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+
+// ==================== 数据刷新 ====================
+async function refreshData() {
+    if (!contract) await initContract();
+
+    try {
+        // 获取公共数据
+        const roundId = await contract.roundId();
+        const totalStaked = await contract.totalStaked();
+        const totalUnclaimedPrizes = await contract.totalUnclaimedPrizes();
+        const wbnbBalance = await contract.getWBNBBalance(); // 分红池总大小
+        const pendingTax = await contract.pendingTax();
+        
+        // 获取当前轮次信息
+        let currentRoundInfo = null;
+        if (roundId > 0) {
+            currentRoundInfo = await contract.getCurrentRoundInfo();
+        }
+
+        // 如果有连接的用户，获取用户数据
+        if (currentAccount) {
+            const userBalance = await tokenContract.balanceOf(currentAccount);
+            const burnWeight = await contract.burnWeight(currentAccount);
+            const tickets = await contract.tickets(currentAccount);
+            const pendingDiv = await contract.pendingDividend(currentAccount);
+            
+            // 更新UI
+            document.getElementById('userBalance').innerText = formatAmount(userBalance, tokenDecimals);
+            document.getElementById('burnPoints').innerText = formatAmount(burnWeight, tokenDecimals);
+            document.getElementById('burnWeight').innerText = formatAmount(burnWeight, tokenDecimals); // 燃烧页显示
+            document.getElementById('totalBurned').innerText = formatAmount(burnWeight, tokenDecimals) + ' AI币';
+            
+            // 我的本期彩票数
+            document.getElementById('myTicketCount').innerText = formatAmount(tickets, tokenDecimals);
+            
+            // 待领取分红
+            document.getElementById('claimableAmount').innerText = formatAmount(pendingDiv, 18); // WBNB是18位
+        } else {
+            // 清空用户相关
+            document.getElementById('userBalance').innerText = '0';
+            document.getElementById('burnPoints').innerText = '0';
+            document.getElementById('myTicketCount').innerText = '0';
+            document.getElementById('claimableAmount').innerText = '0';
+        }
+
+        // 更新公共UI
+        document.getElementById('dividendPool').innerText = formatAmount(wbnbBalance, 18);
+        document.getElementById('totalDistributed').innerText = '0'; // 累计分红暂不实现
+        document.getElementById('jackpotAmount').innerText = currentRoundInfo ? formatAmount(currentRoundInfo.prizePool, tokenDecimals) : '0';
+        
+        // 更新当前轮次显示
+        if (currentRoundInfo) {
+            document.getElementById('currentRound').innerText = currentRoundInfo.roundId;
+            document.getElementById('roundPoolDisplay').innerText = formatAmount(currentRoundInfo.prizePool, tokenDecimals);
+            document.getElementById('totalTicketsDisplay').innerText = currentRoundInfo.totalTickets;
+            // 参与人数需要从ticketAddresses长度获取，但getCurrentRoundInfo没有，需要额外调用
+            try {
+                const roundDetail = await contract.getRoundInfo(currentRoundInfo.roundId);
+                document.getElementById('participantCount').innerText = roundDetail[5].length; // winners数组实际是ticketAddresses? 注意getRoundInfo返回的是winners，不是参与者。这里需要修正。
+                // 临时：无法获取参与者人数，显示总票数
+                document.getElementById('participantCount').innerText = currentRoundInfo.totalTickets;
+            } catch (e) {}
+            
+            // 状态显示
+            if (currentRoundInfo.drawn) {
+                document.getElementById('roundStatus').innerText = '已开奖';
+                document.getElementById('roundStatus').className = 'round-status-badge status-drawn';
+            } else if (Date.now() / 1000 >= currentRoundInfo.endTime) {
+                document.getElementById('roundStatus').innerText = '可开奖';
+                document.getElementById('roundStatus').className = 'round-status-badge status-pending';
+            } else {
+                document.getElementById('roundStatus').innerText = '进行中';
+                document.getElementById('roundStatus').className = 'round-status-badge status-active';
+            }
+
+            // 更新倒计时
+            updateCountdown(currentRoundInfo.endTime, currentRoundInfo.drawn);
+        }
+
+        // 更新购买按钮状态
+        updateBuyButton();
+
+        // 更新燃烧按钮状态
+        document.getElementById('burnButton').disabled = !isConnected;
+        document.getElementById('claimButton').disabled = !isConnected;
+
+    } catch (e) {
+        console.error('刷新数据失败', e);
+        showToast('数据加载失败: ' + e.message);
+    }
+}
+
+// 倒计时
+function updateCountdown(endTime, drawn) {
+    const countdownEl = document.getElementById('countdown');
+    const drawStatus = document.getElementById('drawStatus');
+    const drawBtn = document.getElementById('drawBtn');
+
+    if (drawn) {
+        countdownEl.innerText = '00:00';
+        drawStatus.innerText = '本期已开奖';
+        drawBtn.disabled = true;
+        drawBtn.innerText = '已开奖';
+        return;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = endTime - now;
+    if (remaining <= 0) {
+        countdownEl.innerText = '00:00';
+        drawStatus.innerText = '等待开奖';
+        if (isConnected) {
+            drawBtn.disabled = false;
+            drawBtn.innerText = '立即开奖';
+            drawBtn.classList.add('active');
+        } else {
+            drawBtn.disabled = true;
+            drawBtn.innerText = '连接钱包开奖';
+        }
+    } else {
+        const minutes = Math.floor(remaining / 60);
+        const seconds = remaining % 60;
+        countdownEl.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        drawStatus.innerText = '购买彩票参与抽奖';
+        drawBtn.disabled = true;
+        drawBtn.innerText = '开奖倒计时';
+        drawBtn.classList.remove('active');
+    }
+}
+
+// 更新购买按钮状态
+function updateBuyButton() {
+    const buyBtn = document.getElementById('buyBtn');
+    if (!isConnected) {
+        buyBtn.disabled = true;
+        buyBtn.innerText = '请先连接钱包';
+        return;
+    }
+    const roundId = parseInt(document.getElementById('currentRound').innerText);
+    if (roundId === 0) {
+        buyBtn.disabled = true;
+        buyBtn.innerText = '等待启动';
+        return;
+    }
+    // 检查是否已开奖或结束？由合约控制，前端简单启用
+    buyBtn.disabled = false;
+    buyBtn.innerText = '确认购买';
+}
+
+// ==================== 购买彩票 ====================
+async function buyTickets(ticketCount) {
+    if (!isConnected) {
+        showToast('请先连接钱包');
+        return;
+    }
+    const amount = ticketCount * 100; // 100 AI币/张
+    const amountWei = parseAmount(amount.toString(), tokenDecimals);
+
+    try {
+        // 检查授权
+        const allowance = await tokenContract.allowance(currentAccount, CONFIG.contractAddress);
+        if (allowance.lt(amountWei)) {
+            showToast('请先授权代币', 2000);
+            // 尝试授权
+            const txApprove = await tokenContract.approve(CONFIG.contractAddress, ethers.constants.MaxUint256);
+            await txApprove.wait();
+            showToast('授权成功', 2000);
+        }
+
+        // 调用购买
+        const tx = await contract.buyTicket(amountWei);
+        showToast('交易已发送，等待确认...', 3000);
+        await tx.wait();
+        showToast('购买成功！');
+        refreshData();
+        loadRoundHistory();
+    } catch (e) {
+        console.error(e);
+        showToast('购买失败: ' + e.message);
+    }
+}
+
+// ==================== 燃烧代币 ====================
+async function burnTokens(amountStr) {
+    if (!isConnected) return;
+    const amount = parseFloat(amountStr);
+    if (amount <= 0) return;
+    const amountWei = parseAmount(amount.toString(), tokenDecimals);
+
+    try {
+        // 检查授权
+        const allowance = await tokenContract.allowance(currentAccount, CONFIG.contractAddress);
+        if (allowance.lt(amountWei)) {
+            const txApprove = await tokenContract.approve(CONFIG.contractAddress, ethers.constants.MaxUint256);
+            await txApprove.wait();
+        }
+
+        const tx = await contract.burnForDividend(amountWei);
+        showToast('燃烧交易已发送...');
+        await tx.wait();
+        showToast('燃烧成功！');
+        refreshData();
+    } catch (e) {
+        showToast('燃烧失败: ' + e.message);
+    }
+}
+
+// ==================== 领取分红 ====================
+async function claimDividend() {
+    if (!isConnected) return;
+    try {
+        const tx = await contract.claimTaxDividend();
+        showToast('领取交易已发送...');
+        await tx.wait();
+        showToast('领取成功！');
+        refreshData();
+    } catch (e) {
+        showToast('领取失败: ' + e.message);
+    }
+}
+
+// ==================== 开奖 ====================
+async function drawRound(roundId) {
+    if (!isConnected) return;
+    try {
+        const tx = await contract.drawRound(roundId);
+        showToast('开奖交易已发送...');
+        await tx.wait();
+        showToast('开奖成功！');
+        refreshData();
+        loadRoundHistory();
+    } catch (e) {
+        showToast('开奖失败: ' + e.message);
+    }
+}
+
+// ==================== 领取单个轮次奖金 ====================
+async function claimPrize(roundId) {
+    if (!isConnected) return;
+    try {
+        const tx = await contract.claimPrize(roundId);
+        showToast('领取交易已发送...');
+        await tx.wait();
+        showToast('领取成功！');
+        refreshData();
+        loadRoundHistory();
+    } catch (e) {
+        showToast('领取失败: ' + e.message);
+    }
+}
+
+// ==================== 一键领取所有奖金 ====================
+async function claimAllPrizes() {
+    if (!isConnected) return;
+    // 获取用户有未领奖金的轮次
+    const roundIds = userRounds.filter(r => r.unclaimedCount > 0).map(r => r.roundId);
+    if (roundIds.length === 0) {
+        showToast('没有可领取的奖金');
+        return;
+    }
+    showToast(`开始领取 ${roundIds.length} 个轮次的奖金...`, 3000);
+    for (let rid of roundIds) {
+        try {
+            const tx = await contract.claimPrize(rid);
+            await tx.wait();
+        } catch (e) {
+            console.error(`轮次 ${rid} 领取失败`, e);
+            showToast(`轮次 ${rid} 领取失败: ${e.message}`);
+            // 继续尝试下一个
+        }
+    }
+    showToast('批量领取完成！');
+    refreshData();
+    loadRoundHistory();
+}
+
+// ==================== 加载历史开奖记录 ====================
+async function loadRoundHistory() {
+    if (!contract) await initContract();
+    const historyDiv = document.getElementById('historyList');
+    const claimAllBtn = document.getElementById('claimAllBtn');
+
+    try {
+        const roundId = await contract.roundId();
+        if (roundId === 0) {
+            historyDiv.innerHTML = '<div class="empty-history">暂无历史记录</div>';
+            claimAllBtn.style.display = 'none';
+            return;
+        }
+
+        let html = '';
+        let hasUnclaimed = false;
+        userRounds = [];
+
+        // 从最新轮次往前遍历（最多20轮）
+        const start = roundId > 20 ? roundId - 19 : 1;
+        for (let i = roundId; i >= start; i--) {
+            const info = await contract.getRoundInfo(i);
+            const drawn = info.drawn;
+            const winners = info.winners;
+            const shares = info.winnerShares;
+            const prizePool = info.prizePool;
+
+            let userWon = false;
+            let userClaimedCount = 0;
+            let userUnclaimedCount = 0;
+            let userTotalAmount = 0;
+
+            if (currentAccount && drawn) {
+                // 获取用户在该轮次的中奖信息
+                try {
+                    const userInfo = await contract.getUserPrizeInfo(i, currentAccount);
+                    userTotalAmount = userInfo.totalWon;
+                    userClaimedCount = userInfo.claimedCount;
+                    userUnclaimedCount = userInfo.unclaimedCount;
+                    userWon = userTotalAmount.gt(0);
+                    if (userUnclaimedCount > 0) hasUnclaimed = true;
+                } catch (e) {}
+            }
+
+            if (drawn) {
+                const winnersList = winners.join(', ').substring(0, 30) + (winners.length > 2 ? '...' : '');
+                const itemClass = userWon ? 'history-item won' : 'history-item';
+                html += `<div class="${itemClass}">
+                    <div class="round-info">
+                        <div class="round-id">第 ${i} 期 ${userWon ? '<span class="winner-badge">中奖</span>' : ''}</div>
+                        <div class="round-pool">奖池: ${formatAmount(prizePool, tokenDecimals)} AI币</div>
+                    </div>
+                    <div class="round-detail">
+                        <div>${winnersList}</div>`;
+                if (userWon && userUnclaimedCount > 0) {
+                    html += `<button class="claim-btn-small can-claim" onclick="ContractAPI.claimPrize(${i})">领取</button>`;
+                } else if (userWon && userUnclaimedCount === 0) {
+                    html += `<span style="color:#00b894;">已领</span>`;
+                }
+                html += `</div></div>`;
+            }
+        }
+
+        if (html === '') {
+            html = '<div class="empty-history">暂无历史记录</div>';
+        }
+        historyDiv.innerHTML = html;
+        claimAllBtn.style.display = hasUnclaimed ? 'flex' : 'none';
+
+    } catch (e) {
+        console.error('加载历史失败', e);
+    }
+}
+
+// ==================== 更新中奖概率 ====================
+async function updateWinChance() {
+    if (!currentAccount || !contract) return;
+    try {
+        const tickets = await contract.tickets(currentAccount);
+        const currentRoundInfo = await contract.getCurrentRoundInfo();
+        const totalTickets = currentRoundInfo.totalTickets;
+        if (totalTickets > 0) {
+            const chance = (tickets * 100) / totalTickets;
+            document.getElementById('winChance').innerText = chance.toFixed(2) + '%';
+        } else {
+            document.getElementById('winChance').innerText = '0%';
+        }
+    } catch (e) {}
+}
+
+// ==================== 更新每日分红估算 ====================
+async function updateDailyDividend(burnAmount) {
+    // 估算逻辑：根据当前pendingTax和总权重，乘以用户的权重
+    // 这里简化，根据过去24小时分红估算？无法简单估算，暂时不实现
+    document.getElementById('dailyDividend').innerText = '0';
+}
+
+// ==================== 导出API ====================
+window.ContractAPI = {
+    connectWallet,
+    refreshData,
+    buyTickets,
+    burnTokens,
+    claimDividend,
+    drawRound,
+    claimPrize,
+    claimAllPrizes,
+    loadRoundHistory,
+    updateWinChance,
+    updateDailyDividend,
+    // 辅助
+    getContract: () => contract
+};
+
+// 初始化
+initContract().then(() => {
+    refreshData();
+    loadRoundHistory();
+});
+
+// 监听网络变化
+if (window.ethereum) {
+    window.ethereum.on('chainChanged', () => {
+        window.location.reload();
+    });
+}
