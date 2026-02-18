@@ -21,6 +21,7 @@
             padding-bottom: 80px;
         }
 
+        /* 修复：确保header正确显示 */
         .header {
             background: #fff;
             padding: 12px 16px;
@@ -31,6 +32,7 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            min-height: 60px;
         }
 
         .brand {
@@ -40,6 +42,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-shrink: 0;
         }
 
         .brand::before {
@@ -47,30 +50,41 @@
             font-size: 24px;
         }
 
+        /* 修复：wallet-status 样式 */
         .wallet-status {
             display: flex;
             align-items: center;
             gap: 8px;
             font-size: 13px;
+            flex-shrink: 0;
+            max-width: 70%;
+            overflow: hidden;
         }
 
         .address-tag {
             background: #f0f0f0;
-            padding: 4px 12px;
-            border-radius: 12px;
+            padding: 6px 12px;
+            border-radius: 16px;
             color: #666;
             font-family: monospace;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 120px;
         }
 
         .connect-btn {
             background: #00b894;
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 16px;
-            font-size: 13px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
             cursor: pointer;
             font-weight: bold;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .connect-btn:hover {
@@ -79,6 +93,7 @@
 
         .connect-btn:disabled {
             background: #ccc;
+            cursor: not-allowed;
         }
 
         .refresh-btn {
@@ -89,17 +104,20 @@
             font-size: 12px;
             color: #666;
             cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .disconnect-btn {
             background: #ff7675;
             color: white;
             border: none;
-            padding: 4px 8px;
-            border-radius: 8px;
+            padding: 6px 10px;
+            border-radius: 10px;
             font-size: 11px;
             cursor: pointer;
-            margin-left: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .stats-grid {
@@ -170,7 +188,7 @@
         .price-value {
             font-size: 24px;
             font-weight: bold;
-            color: #2d3436;
+            color: #d63031;
         }
 
         .price-tip {
@@ -381,40 +399,28 @@
             cursor: not-allowed;
         }
 
-        .buy-lottery-btn:not(:disabled):active {
-            transform: scale(0.98);
-        }
-
-        .my-tickets {
-            padding: 16px;
+        .my-ticket-card {
             background: #fff;
-            margin: 0 16px 16px;
             border-radius: 16px;
+            padding: 20px;
+            margin: 0 16px 16px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
 
-        .tickets-list {
+        .ticket-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 8px;
             margin-top: 12px;
         }
 
-        .ticket-item {
-            aspect-ratio: 1;
+        .ticket-mini {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 8px;
-            padding: 12px 4px;
+            padding: 8px 4px;
             text-align: center;
             color: white;
-            font-size: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .ticket-id {
-            font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 2px;
+            font-size: 11px;
         }
 
         .bottom-nav {
@@ -502,10 +508,6 @@
             cursor: not-allowed;
         }
 
-        .claim-btn-large:not(:disabled):active {
-            transform: scale(0.98);
-        }
-
         .burn-card {
             background: #fff;
             border-radius: 16px;
@@ -533,10 +535,6 @@
             cursor: not-allowed;
         }
 
-        .burn-btn-large:not(:disabled):active {
-            transform: scale(0.98);
-        }
-
         .toast {
             position: fixed;
             top: 50%;
@@ -552,7 +550,6 @@
             backdrop-filter: blur(10px);
         }
 
-        /* 新增：开奖区域样式 */
         .draw-section {
             background: linear-gradient(135deg, #2d3436 0%, #000000 100%);
             border-radius: 16px;
@@ -616,7 +613,6 @@
             100% { box-shadow: 0 0 0 0 rgba(253, 203, 110, 0); }
         }
 
-        /* 新增：历史记录样式 */
         .history-section {
             background: #fff;
             border-radius: 16px;
@@ -697,14 +693,6 @@
             animation: pulse 2s infinite;
         }
 
-        .empty-history {
-            text-align: center;
-            color: #999;
-            padding: 40px 0;
-            font-size: 14px;
-        }
-
-        /* 新增：当前轮次信息卡片 */
         .round-info-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 16px;
@@ -760,42 +748,6 @@
         .status-pending { background: #fdcb6e; color: #2d3436; }
         .status-drawn { background: #636e72; }
 
-        /* 新增：我的彩票列表优化 */
-        .my-ticket-card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 20px;
-            margin: 0 16px 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
-
-        .ticket-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .ticket-mini {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 8px;
-            padding: 8px 4px;
-            text-align: center;
-            color: white;
-            font-size: 11px;
-            position: relative;
-        }
-
-        .ticket-mini::after {
-            content: '✓';
-            position: absolute;
-            top: 2px;
-            right: 2px;
-            font-size: 8px;
-            opacity: 0.8;
-        }
-
-        /* 新增：批量领奖按钮 */
         .claim-all-btn {
             width: 100%;
             background: #00b894;
@@ -817,26 +769,19 @@
             background: #ccc;
         }
 
-        /* 加载动画 */
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .empty-history {
+            text-align: center;
+            color: #999;
+            padding: 40px 0;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
 
+    <!-- 修复：确保header结构正确 -->
     <div class="header">
-        <div class="brand">AI彩票</div>
+        <div class="brand">🎯 AI彩票</div>
         <div class="wallet-status" id="walletStatus">
             <button class="connect-btn" id="connectBtn">连接钱包</button>
         </div>
@@ -845,7 +790,7 @@
     <!-- 首页 -->
     <div id="homePage" class="page active">
         <div style="padding: 0 16px; margin-bottom: 8px; text-align: right;">
-            <button class="refresh-btn" id="refreshBtn" style="display:none;">🔄 刷新数据</button>
+            <button class="refresh-btn" id="refreshBtn" style="display:none;" onclick="ContractAPI.refreshData()">🔄 刷新数据</button>
         </div>
 
         <div class="stats-grid">
@@ -869,7 +814,7 @@
         <div class="info-section">
             <div class="info-card price-card">
                 <h3>💰 分红奖池</h3>
-                <div class="price-value" id="dividendPool" style="color: #d63031;">0.00</div>
+                <div class="price-value" id="dividendPool">0.00</div>
                 <div class="price-tip">燃烧AI币可获得分红权重</div>
             </div>
             <div class="info-card pool-card">
@@ -1068,11 +1013,9 @@
                 document.getElementById(page + 'Page').classList.add('active');
                 this.classList.add('active');
                 
-                // 切换页面时刷新数据
                 if (typeof ContractAPI !== 'undefined' && ContractAPI.refreshData) {
                     ContractAPI.refreshData();
                 }
-                // 切换到首页时加载历史记录
                 if (page === 'home' && typeof ContractAPI !== 'undefined' && ContractAPI.loadRoundHistory) {
                     ContractAPI.loadRoundHistory();
                 }
@@ -1083,16 +1026,22 @@
         document.getElementById('startBtn').addEventListener('click', function() {
             const detail = document.getElementById('lotteryDetail');
             const entry = document.getElementById('gameEntry');
+            const roundInfoCard = document.getElementById('roundInfoCard');
+            const drawSection = document.getElementById('drawSection');
+            const myTicketCard = document.getElementById('myTicketCard');
+            
             if (detail.style.display === 'block') {
                 detail.style.display = 'none';
                 entry.style.display = 'block';
+                roundInfoCard.style.display = 'none';
+                drawSection.style.display = 'none';
+                myTicketCard.style.display = 'none';
             } else {
                 detail.style.display = 'block';
                 entry.style.display = 'none';
-                // 显示轮次信息和开奖区域
-                document.getElementById('roundInfoCard').style.display = 'block';
-                document.getElementById('drawSection').style.display = 'block';
-                document.getElementById('myTicketCard').style.display = 'block';
+                roundInfoCard.style.display = 'block';
+                drawSection.style.display = 'block';
+                myTicketCard.style.display = 'block';
             }
         });
 
@@ -1113,7 +1062,6 @@
             const cost = amount * 100;
             document.getElementById('totalCost').textContent = cost;
             
-            // 更新概率
             if (typeof ContractAPI !== 'undefined' && ContractAPI.updateWinChance) {
                 ContractAPI.updateWinChance();
             }
@@ -1135,13 +1083,6 @@
                 ContractAPI.connectWallet();
             } else {
                 alert('合约配置加载失败，请检查contract.js');
-            }
-        });
-
-        // 刷新按钮
-        document.getElementById('refreshBtn').addEventListener('click', function() {
-            if (typeof ContractAPI !== 'undefined' && ContractAPI.refreshData) {
-                ContractAPI.refreshData();
             }
         });
 
@@ -1194,12 +1135,10 @@
             setTimeout(() => toast.style.display = 'none', duration);
         }
 
-        // 暴露给全局
         window.showToast = showToast;
 
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
-            // 检查是否已连接（如果有钱包缓存）
             if (typeof ContractAPI !== 'undefined' && window.ethereum && window.ethereum.selectedAddress) {
                 ContractAPI.connectWallet();
             }
