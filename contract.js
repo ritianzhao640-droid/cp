@@ -21,18 +21,12 @@ const CONFIG = {
 
 // ==================== ABI 定义 ====================
 
-// ---------- 1. 销毁分红合约 ABI (BurnPool/Lottery Contract) ----------
-// 注意：这个 ABI 需要根据你的实际合约替换
-// 以下是基于你之前描述的完整功能 ABI
+// ---------- 1. 销毁分红合约 ABI (BurnPool Contract) ----------
 const BURN_POOL_ABI = [
-    // ===== 视图函数 =====
-    
-    // 基础信息
+    // 视图函数
     "function token() view returns (address)",
     "function wbnb() view returns (address)",
     "function tokenSet() view returns (bool)",
-    
-    // 燃烧分红相关
     "function burnWeight(address user) view returns (uint256)",
     "function totalBurnWeight() view returns (uint256)",
     "function pendingTax() view returns (uint256)",
@@ -41,34 +35,24 @@ const BURN_POOL_ABI = [
     "function unclaimedDividend(address user) view returns (uint256)",
     "function pendingDividend(address user) view returns (uint256)",
     "function getWBNBBalance() view returns (uint256)",
-    
-    // 彩票轮次相关
     "function roundId() view returns (uint256)",
     "function totalStaked() view returns (uint256)",
     "function tickets(address user) view returns (uint256)",
     "function prizeReleaseRate() view returns (uint256)",
     "function totalUnclaimedPrizes() view returns (uint256)",
-    
-    // 轮次信息
     "function getCurrentRoundInfo() view returns (uint256 roundId, uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, bool drawn, uint256 timeRemaining, bool canDraw)",
     "function getRoundInfo(uint256 _roundId) view returns (uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, bool drawn, address[] memory winners, uint256[] memory winnerShares)",
     "function getUserPrizeInfo(uint256 _roundId, address user) view returns (uint256 totalWon, uint256 claimedCount, uint256 unclaimedCount, uint256 unclaimedAmount)",
     
-    // ===== 写函数 =====
-    
-    // 管理
+    // 写函数
     "function setToken(address _token) external",
-    
-    // 燃烧分红
     "function burnForDividend(uint256 amount) external",
     "function claimTaxDividend() external",
-    
-    // 彩票
     "function buyTicket(uint256 amount) external",
     "function drawRound(uint256 _roundId) external",
     "function claimPrize(uint256 _roundId) external",
     
-    // ===== 事件 =====
+    // 事件
     "event TokenSet(address indexed token, address indexed wbnb)",
     "event Burn(address indexed user, uint256 amount, uint256 cachedDividend)",
     "event DividendClaimed(address indexed user, uint256 wbnbAmount)",
@@ -80,10 +64,8 @@ const BURN_POOL_ABI = [
     "event PrizeClaimed(address indexed user, uint256 indexed roundId, uint256 amount, uint256 claimCount)"
 ];
 
-// ---------- 2. 代币合约 ABI (Standard ERC20 Token) ----------
-// 标准 ERC20 + 常见扩展功能
+// ---------- 2. 代币合约 ABI (Standard ERC20) ----------
 const TOKEN_ABI = [
-    // ===== ERC20 标准 =====
     "function name() view returns (string)",
     "function symbol() view returns (string)",
     "function decimals() view returns (uint8)",
@@ -93,15 +75,8 @@ const TOKEN_ABI = [
     "function allowance(address owner, address spender) view returns (uint256)",
     "function approve(address spender, uint256 amount) returns (bool)",
     "function transferFrom(address from, address to, uint256 amount) returns (bool)",
-    
-    // ===== 事件 =====
     "event Transfer(address indexed from, address indexed to, uint256 value)",
-    "event Approval(address indexed owner, address indexed spender, uint256 value)",
-    
-    // ===== 常见扩展（可选）=====
-    // 如果你的代币有燃烧功能，取消注释下面两行：
-    // "function burn(uint256 amount) external",
-    // "function burnFrom(address account, uint256 amount) external"
+    "event Approval(address indexed owner, address indexed spender, uint256 value)"
 ];
 
 // ==================== 状态管理 ====================
@@ -125,11 +100,16 @@ function showToast(msg, duration = 3000) {
 
 function formatAmount(amount, decimals = 18, fixed = 4) {
     if (!amount) return '0';
-    const formatted = ethers.utils.formatUnits(amount, decimals);
-    const num = parseFloat(formatted);
-    if (num === 0) return '0';
-    if (num < 0.0001) return '<0.0001';
-    return num.toFixed(fixed).replace(/\.?0+$/, '');
+    try {
+        const formatted = ethers.utils.formatUnits(amount, decimals);
+        const num = parseFloat(formatted);
+        if (num === 0) return '0';
+        if (num < 0.0001) return '<0.0001';
+        return num.toFixed(fixed).replace(/\.?0+$/, '');
+    } catch (e) {
+        console.error('formatAmount error:', e);
+        return '0';
+    }
 }
 
 function parseAmount(amountStr, decimals = 18) {
@@ -147,10 +127,6 @@ function shortenAddress(addr) {
 }
 
 // ==================== 初始化函数 ====================
-
-/**
- * 初始化 Provider（只读模式）
- */
 async function initProvider() {
     if (window.ethereum) {
         provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -161,19 +137,12 @@ async function initProvider() {
     return provider;
 }
 
-/**
- * 初始化所有合约（只读模式）
- */
 async function initContracts() {
     if (!provider) await initProvider();
     
-    // 初始化销毁分红合约
     burnPoolContract = new ethers.Contract(CONFIG.burnPoolAddress, BURN_POOL_ABI, provider);
-    
-    // 初始化代币合约
     tokenContract = new ethers.Contract(CONFIG.tokenAddress, TOKEN_ABI, provider);
     
-    // 获取代币基本信息
     try {
         [tokenDecimals, tokenSymbol] = await Promise.all([
             tokenContract.decimals(),
@@ -188,23 +157,14 @@ async function initContracts() {
     return { burnPoolContract, tokenContract };
 }
 
-/**
- * 使用 Signer 重新连接合约（可写模式）
- */
 async function connectContractsWithSigner() {
     if (!signer) throw new Error('No signer available');
-    
     burnPoolContract = burnPoolContract.connect(signer);
     tokenContract = tokenContract.connect(signer);
-    
     return { burnPoolContract, tokenContract };
 }
 
 // ==================== 钱包连接 ====================
-
-/**
- * 连接钱包
- */
 async function connectWallet() {
     if (!window.ethereum) {
         showToast('请安装MetaMask');
@@ -212,31 +172,22 @@ async function connectWallet() {
     }
     
     try {
-        // 请求账户授权
         await window.ethereum.request({ method: 'eth_requestAccounts' });
-        
-        // 重新初始化 provider 和 signer
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
         currentAccount = await signer.getAddress();
         isConnected = true;
 
-        // 更新UI
         updateWalletUI();
-        
-        // 使用 signer 重新连接合约
         await connectContractsWithSigner();
 
-        // 检查网络
         const network = await provider.getNetwork();
         if (network.chainId !== CONFIG.chainId) {
             showToast(`请切换到链ID ${CONFIG.chainId}`, 5000);
         }
 
-        // 刷新数据
         await refreshAllData();
 
-        // 监听账户变化
         setupEventListeners();
 
     } catch (e) {
@@ -245,15 +196,11 @@ async function connectWallet() {
     }
 }
 
-/**
- * 断开钱包连接
- */
 function disconnectWallet() {
     isConnected = false;
     currentAccount = null;
     signer = null;
     
-    // 重置为只读模式
     if (provider) {
         burnPoolContract = new ethers.Contract(CONFIG.burnPoolAddress, BURN_POOL_ABI, provider);
         tokenContract = new ethers.Contract(CONFIG.tokenAddress, TOKEN_ABI, provider);
@@ -263,9 +210,6 @@ function disconnectWallet() {
     refreshAllData();
 }
 
-/**
- * 更新钱包相关UI
- */
 function updateWalletUI() {
     const connectBtn = document.getElementById('connectBtn');
     const refreshBtn = document.getElementById('refreshBtn');
@@ -282,13 +226,9 @@ function updateWalletUI() {
     }
 }
 
-/**
- * 设置事件监听
- */
 function setupEventListeners() {
     if (!window.ethereum) return;
     
-    // 账户变化
     window.ethereum.on('accountsChanged', (accounts) => {
         if (accounts.length === 0) {
             disconnectWallet();
@@ -299,17 +239,12 @@ function setupEventListeners() {
         }
     });
     
-    // 链变化
     window.ethereum.on('chainChanged', () => {
         window.location.reload();
     });
 }
 
 // ==================== 数据刷新 ====================
-
-/**
- * 刷新所有数据
- */
 async function refreshAllData() {
     try {
         await Promise.all([
@@ -322,9 +257,6 @@ async function refreshAllData() {
     }
 }
 
-/**
- * 刷新用户相关数据
- */
 async function refreshUserData() {
     if (!burnPoolContract || !tokenContract) await initContracts();
     
@@ -361,15 +293,11 @@ async function refreshUserData() {
     }
 }
 
-/**
- * 刷新奖池数据
- */
 async function refreshPoolData() {
     if (!burnPoolContract) await initContracts();
     
     try {
         const wbnbBalance = await burnPoolContract.getWBNBBalance();
-        
         const dividendPoolEl = document.getElementById('dividendPool');
         if (dividendPoolEl) {
             dividendPoolEl.innerText = formatAmount(wbnbBalance, 18, 4) + ' WBNB';
@@ -379,9 +307,6 @@ async function refreshPoolData() {
     }
 }
 
-/**
- * 刷新轮次数据
- */
 async function refreshRoundData() {
     if (!burnPoolContract) await initContracts();
     
@@ -403,7 +328,6 @@ async function refreshRoundData() {
 }
 
 // ==================== UI 更新函数 ====================
-
 function updateUserUI(data) {
     const { userBalance, burnWeight, tickets, pendingDiv, totalClaimed } = data;
     
@@ -455,11 +379,20 @@ function updateRoundUI(roundInfo) {
     const roundPoolDisplayEl = document.getElementById('roundPoolDisplay');
     if (roundPoolDisplayEl) roundPoolDisplayEl.innerText = formatAmount(roundInfo.prizePool, tokenDecimals) + ' AI币';
     
+    // 修复：票数显示真实值（处理18位精度）
     const totalTicketsDisplayEl = document.getElementById('totalTicketsDisplay');
-    if (totalTicketsDisplayEl) totalTicketsDisplayEl.innerText = roundInfo.totalTickets.toString();
+    if (totalTicketsDisplayEl) {
+        // 将18位精度的票数转换为真实票数
+        const realTickets = roundInfo.totalTickets.div(ethers.BigNumber.from(10).pow(18));
+        totalTicketsDisplayEl.innerText = realTickets.toString();
+    }
     
     const participantCountEl = document.getElementById('participantCount');
-    if (participantCountEl) participantCountEl.innerText = roundInfo.totalTickets.toString();
+    if (participantCountEl) {
+        // 将18位精度的票数转换为真实票数
+        const realTickets = roundInfo.totalTickets.div(ethers.BigNumber.from(10).pow(18));
+        participantCountEl.innerText = realTickets.toString();
+    }
     
     const roundStatusEl = document.getElementById('roundStatus');
     if (roundStatusEl) {
@@ -494,6 +427,7 @@ function resetRoundUI() {
 }
 
 function updateActionButtons() {
+    // 购买按钮
     const buyBtn = document.getElementById('buyBtn');
     if (buyBtn) {
         if (!isConnected) {
@@ -505,15 +439,22 @@ function updateActionButtons() {
         }
     }
     
+    // 修复：燃烧按钮文字 - 未连接时显示"开始燃烧"
     const burnButton = document.getElementById('burnButton');
-    if (burnButton) burnButton.disabled = !isConnected;
+    if (burnButton) {
+        burnButton.disabled = !isConnected;
+        burnButton.innerText = isConnected ? '开始燃烧' : '开始燃烧';
+    }
     
+    // 修复：领取分红按钮文字 - 未连接时显示"领取分红"
     const claimButton = document.getElementById('claimButton');
-    if (claimButton) claimButton.disabled = !isConnected;
+    if (claimButton) {
+        claimButton.disabled = !isConnected;
+        claimButton.innerText = isConnected ? '领取分红' : '领取分红';
+    }
 }
 
 // ==================== 业务逻辑函数 ====================
-
 async function getTotalClaimedDividend(userAddress) {
     if (!burnPoolContract || !userAddress) return ethers.BigNumber.from(0);
     
@@ -602,7 +543,6 @@ function updateCountdown(endTime, drawn) {
 }
 
 // ==================== 合约交互函数 ====================
-
 async function buyTickets(ticketCount) {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -774,7 +714,6 @@ async function claimAllPrizes() {
 }
 
 // ==================== 数据加载函数 ====================
-
 async function loadRoundHistory() {
     if (!burnPoolContract) await initContracts();
     
@@ -972,7 +911,6 @@ async function updateDailyDividend(burnAmount) {
 }
 
 // ==================== 导出 API ====================
-
 window.ContractAPI = {
     connectWallet,
     disconnectWallet,
@@ -996,7 +934,6 @@ window.ContractAPI = {
 };
 
 // ==================== 初始化 ====================
-
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await initContracts();
