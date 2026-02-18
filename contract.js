@@ -8,15 +8,14 @@ const CONFIG = {
     // 请替换为实际代币地址（AI币）
     tokenAddress: '0x...',
     // 请替换为实际WBNB地址（BSC主网：0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c）
-    wbnbAddress: '0x...',
+    wbnbAddress: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
     // 链ID (BSC主网56，测试网97)
     chainId: 56,
     // RPC URL (可选，用于只读操作)
-    rpcUrl: 'https://data-seed-prebsc-1-s1.binance.org:8545/'
+    rpcUrl: 'https://bsc-dataseed.binance.org/'
 };
 
 // ==================== ABI ====================
-// 从合约编译后提取的ABI（仅包含用到的函数和事件）
 const CONTRACT_ABI = [
     // ---------- 视图函数 ----------
     "function token() view returns (address)",
@@ -74,12 +73,13 @@ const ERC20_ABI = [
 let provider, signer, contract, tokenContract;
 let currentAccount = null;
 let isConnected = false;
-let tokenDecimals = 18; // 默认，实际会获取
+let tokenDecimals = 18;
 let tokenSymbol = 'AI';
 
 // 缓存数据
-let cachedRounds = {};   // roundId => 轮次信息
-let userRounds = [];     // 用户参与过的轮次（用于历史记录）
+let cachedRounds = {};
+let userRounds = [];
+let burnRankData = []; // 燃烧排行数据
 
 // ==================== 工具函数 ====================
 function showToast(msg, duration = 3000) {
@@ -87,13 +87,22 @@ function showToast(msg, duration = 3000) {
     else alert(msg);
 }
 
-function formatAmount(amount, decimals = 18) {
+function formatAmount(amount, decimals = 18, fixed = 4) {
     if (!amount) return '0';
-    return ethers.utils.formatUnits(amount, decimals);
+    const formatted = ethers.utils.formatUnits(amount, decimals);
+    const num = parseFloat(formatted);
+    if (num === 0) return '0';
+    if (num < 0.0001) return '<0.0001';
+    return num.toFixed(fixed).replace(/\.?0+$/, '');
 }
 
 function parseAmount(amountStr, decimals = 18) {
     return ethers.utils.parseUnits(amountStr, decimals);
+}
+
+function shortenAddress(addr) {
+    if (!addr) return '';
+    return addr.slice(0, 6) + '...' + addr.slice(-4);
 }
 
 // ==================== 初始化 ====================
@@ -110,7 +119,6 @@ async function initProvider() {
 async function initContract() {
     if (!provider) await initProvider();
     contract = new ethers.Contract(CONFIG.contractAddress, CONTRACT_ABI, provider);
-    // 代币合约
     tokenContract = new ethers.Contract(CONFIG.tokenAddress, ERC20_ABI, provider);
     try {
         tokenDecimals = await tokenContract.decimals();
@@ -134,9 +142,15 @@ async function connectWallet() {
         isConnected = true;
 
         // 更新UI
-        document.getElementById('connectBtn').innerText = shortenAddress(currentAccount);
-        document.querySelector('.refresh-btn').style.display = 'inline-block';
+        const connectBtn = document.getElementById('connectBtn');
+        if (connectBtn) connectBtn.innerText = shortenAddress(currentAccount);
         
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) refreshBtn.style.display = 'inline-block';
+        
+        const walletTip = document.getElementById('walletTip');
+        if (walletTip) walletTip.style.display = 'block';
+
         // 初始化合约（带signer）
         contract = contract.connect(signer);
         tokenContract = tokenContract.connect(signer);
@@ -157,7 +171,8 @@ async function connectWallet() {
                 disconnectWallet();
             } else {
                 currentAccount = accounts[0];
-                document.getElementById('connectBtn').innerText = shortenAddress(currentAccount);
+                const btn = document.getElementById('connectBtn');
+                if (btn) btn.innerText = shortenAddress(currentAccount);
                 refreshData();
             }
         });
@@ -172,14 +187,16 @@ function disconnectWallet() {
     isConnected = false;
     currentAccount = null;
     signer = null;
-    document.getElementById('connectBtn').innerText = '连接钱包';
-    document.querySelector('.refresh-btn').style.display = 'none';
-    // 清空数据
-    refreshData(); // 会显示默认值
-}
-
-function shortenAddress(addr) {
-    return addr.slice(0, 6) + '...' + addr.slice(-4);
+    const connectBtn = document.getElementById('connectBtn');
+    if (connectBtn) connectBtn.innerText = '连接钱包';
+    
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) refreshBtn.style.display = 'none';
+    
+    const walletTip = document.getElementById('walletTip');
+    if (walletTip) walletTip.style.display = 'none';
+    
+    refreshData();
 }
 
 // ==================== 数据刷新 ====================
@@ -189,10 +206,7 @@ async function refreshData() {
     try {
         // 获取公共数据
         const roundId = await contract.roundId();
-        const totalStaked = await contract.totalStaked();
-        const totalUnclaimedPrizes = await contract.totalUnclaimedPrizes();
-        const wbnbBalance = await contract.getWBNBBalance(); // 分红池总大小
-        const pendingTax = await contract.pendingTax();
+        const wbnbBalance = await contract.getWBNBBalance();
         
         // 获取当前轮次信息
         let currentRoundInfo = null;
@@ -207,69 +221,133 @@ async function refreshData() {
             const tickets = await contract.tickets(currentAccount);
             const pendingDiv = await contract.pendingDividend(currentAccount);
             
+            // 获取累计分红（通过事件计算或合约新加函数）
+            const totalClaimed = await getTotalClaimedDividend(currentAccount);
+            
             // 更新UI
-            document.getElementById('userBalance').innerText = formatAmount(userBalance, tokenDecimals);
-            document.getElementById('burnPoints').innerText = formatAmount(burnWeight, tokenDecimals);
-            document.getElementById('burnWeight').innerText = formatAmount(burnWeight, tokenDecimals); // 燃烧页显示
-            document.getElementById('totalBurned').innerText = formatAmount(burnWeight, tokenDecimals) + ' AI币';
+            const userBalanceEl = document.getElementById('userBalance');
+            if (userBalanceEl) userBalanceEl.innerText = formatAmount(userBalance, tokenDecimals);
             
-            // 我的本期彩票数
-            document.getElementById('myTicketCount').innerText = formatAmount(tickets, tokenDecimals);
+            const burnPointsEl = document.getElementById('burnPoints');
+            if (burnPointsEl) burnPointsEl.innerText = formatAmount(burnWeight, tokenDecimals);
             
-            // 待领取分红
-            document.getElementById('claimableAmount').innerText = formatAmount(pendingDiv, 18); // WBNB是18位
+            const burnWeightEl = document.getElementById('burnWeight');
+            if (burnWeightEl) burnWeightEl.innerText = formatAmount(burnWeight, tokenDecimals);
+            
+            const totalBurnedEl = document.getElementById('totalBurned');
+            if (totalBurnedEl) totalBurnedEl.innerText = formatAmount(burnWeight, tokenDecimals) + ' AI币';
+            
+            const myTicketCountEl = document.getElementById('myTicketCount');
+            if (myTicketCountEl) myTicketCountEl.innerText = tickets.toString();
+            
+            const claimableAmountEl = document.getElementById('claimableAmount');
+            if (claimableAmountEl) claimableAmountEl.innerText = formatAmount(pendingDiv, 18, 6);
+            
+            const totalDividendEl = document.getElementById('totalDividend');
+            if (totalDividendEl) totalDividendEl.innerText = formatAmount(totalClaimed, 18, 6) + ' WBNB';
+            
+            const dailyDividendEl = document.getElementById('dailyDividend');
+            if (dailyDividendEl) {
+                // 估算每日分红
+                const daily = await estimateDailyDividend(burnWeight);
+                dailyDividendEl.innerText = daily;
+            }
         } else {
             // 清空用户相关
-            document.getElementById('userBalance').innerText = '0';
-            document.getElementById('burnPoints').innerText = '0';
-            document.getElementById('myTicketCount').innerText = '0';
-            document.getElementById('claimableAmount').innerText = '0';
+            const elements = ['userBalance', 'burnPoints', 'burnWeight', 'myTicketCount', 'claimableAmount'];
+            elements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = '0';
+            });
         }
 
         // 更新公共UI
-        document.getElementById('dividendPool').innerText = formatAmount(wbnbBalance, 18);
-        document.getElementById('totalDistributed').innerText = '0'; // 累计分红暂不实现
-        document.getElementById('jackpotAmount').innerText = currentRoundInfo ? formatAmount(currentRoundInfo.prizePool, tokenDecimals) : '0';
+        const dividendPoolEl = document.getElementById('dividendPool');
+        if (dividendPoolEl) dividendPoolEl.innerText = formatAmount(wbnbBalance, 18, 4);
+        
+        const jackpotAmountEl = document.getElementById('jackpotAmount');
+        if (jackpotAmountEl) jackpotAmountEl.innerText = currentRoundInfo ? formatAmount(currentRoundInfo.prizePool, tokenDecimals) : '0';
         
         // 更新当前轮次显示
         if (currentRoundInfo) {
-            document.getElementById('currentRound').innerText = currentRoundInfo.roundId;
-            document.getElementById('roundPoolDisplay').innerText = formatAmount(currentRoundInfo.prizePool, tokenDecimals);
-            document.getElementById('totalTicketsDisplay').innerText = currentRoundInfo.totalTickets;
-            // 参与人数需要从ticketAddresses长度获取，但getCurrentRoundInfo没有，需要额外调用
-            try {
-                const roundDetail = await contract.getRoundInfo(currentRoundInfo.roundId);
-                document.getElementById('participantCount').innerText = roundDetail[5].length; // winners数组实际是ticketAddresses? 注意getRoundInfo返回的是winners，不是参与者。这里需要修正。
-                // 临时：无法获取参与者人数，显示总票数
-                document.getElementById('participantCount').innerText = currentRoundInfo.totalTickets;
-            } catch (e) {}
+            const currentRoundEl = document.getElementById('currentRound');
+            if (currentRoundEl) currentRoundEl.innerText = currentRoundInfo.roundId;
+            
+            const roundPoolDisplayEl = document.getElementById('roundPoolDisplay');
+            if (roundPoolDisplayEl) roundPoolDisplayEl.innerText = formatAmount(currentRoundInfo.prizePool, tokenDecimals);
+            
+            const totalTicketsDisplayEl = document.getElementById('totalTicketsDisplay');
+            if (totalTicketsDisplayEl) totalTicketsDisplayEl.innerText = currentRoundInfo.totalTickets.toString();
+            
+            const participantCountEl = document.getElementById('participantCount');
+            if (participantCountEl) participantCountEl.innerText = currentRoundInfo.totalTickets.toString();
             
             // 状态显示
-            if (currentRoundInfo.drawn) {
-                document.getElementById('roundStatus').innerText = '已开奖';
-                document.getElementById('roundStatus').className = 'round-status-badge status-drawn';
-            } else if (Date.now() / 1000 >= currentRoundInfo.endTime) {
-                document.getElementById('roundStatus').innerText = '可开奖';
-                document.getElementById('roundStatus').className = 'round-status-badge status-pending';
-            } else {
-                document.getElementById('roundStatus').innerText = '进行中';
-                document.getElementById('roundStatus').className = 'round-status-badge status-active';
+            const roundStatusEl = document.getElementById('roundStatus');
+            if (roundStatusEl) {
+                if (currentRoundInfo.drawn) {
+                    roundStatusEl.innerText = '已开奖';
+                    roundStatusEl.className = 'round-status-badge status-drawn';
+                } else if (Date.now() / 1000 >= currentRoundInfo.endTime) {
+                    roundStatusEl.innerText = '可开奖';
+                    roundStatusEl.className = 'round-status-badge status-pending';
+                } else {
+                    roundStatusEl.innerText = '进行中';
+                    roundStatusEl.className = 'round-status-badge status-active';
+                }
             }
 
             // 更新倒计时
             updateCountdown(currentRoundInfo.endTime, currentRoundInfo.drawn);
         }
 
-        // 更新购买按钮状态
+        // 更新按钮状态
         updateBuyButton();
-
-        // 更新燃烧按钮状态
-        document.getElementById('burnButton').disabled = !isConnected;
-        document.getElementById('claimButton').disabled = !isConnected;
+        
+        const burnButton = document.getElementById('burnButton');
+        if (burnButton) burnButton.disabled = !isConnected;
+        
+        const claimButton = document.getElementById('claimButton');
+        if (claimButton) claimButton.disabled = !isConnected;
 
     } catch (e) {
         console.error('刷新数据失败', e);
-        showToast('数据加载失败: ' + e.message);
+        // 不显示错误toast，避免频繁弹出
+    }
+}
+
+// 获取累计分红（通过查询事件）
+async function getTotalClaimedDividend(userAddress) {
+    if (!contract || !userAddress) return ethers.BigNumber.from(0);
+    try {
+        const filter = contract.filters.DividendClaimed(userAddress);
+        const events = await contract.queryFilter(filter, 0, 'latest');
+        let total = ethers.BigNumber.from(0);
+        events.forEach(event => {
+            total = total.add(event.args.wbnbAmount);
+        });
+        return total;
+    } catch (e) {
+        return ethers.BigNumber.from(0);
+    }
+}
+
+// 估算每日分红
+async function estimateDailyDividend(userBurnWeight) {
+    if (!contract || !userBurnWeight || userBurnWeight.eq(0)) return '0';
+    try {
+        const totalWeight = await contract.totalBurnWeight();
+        if (totalWeight.eq(0)) return '0';
+        
+        // 获取当前pendingTax作为参考
+        const pendingTax = await contract.pendingTax();
+        // 简化估算：假设每天产生类似的税收
+        const dailyTax = pendingTax.mul(2); // 粗略估计
+        const userShare = dailyTax.mul(userBurnWeight).div(totalWeight);
+        
+        return formatAmount(userShare, 18, 6);
+    } catch (e) {
+        return '0';
     }
 }
 
@@ -279,16 +357,20 @@ function updateCountdown(endTime, drawn) {
     const drawStatus = document.getElementById('drawStatus');
     const drawBtn = document.getElementById('drawBtn');
 
+    if (!countdownEl || !drawStatus || !drawBtn) return;
+
     if (drawn) {
         countdownEl.innerText = '00:00';
         drawStatus.innerText = '本期已开奖';
         drawBtn.disabled = true;
         drawBtn.innerText = '已开奖';
+        drawBtn.classList.remove('active');
         return;
     }
 
     const now = Math.floor(Date.now() / 1000);
     const remaining = endTime - now;
+    
     if (remaining <= 0) {
         countdownEl.innerText = '00:00';
         drawStatus.innerText = '等待开奖';
@@ -299,6 +381,7 @@ function updateCountdown(endTime, drawn) {
         } else {
             drawBtn.disabled = true;
             drawBtn.innerText = '连接钱包开奖';
+            drawBtn.classList.remove('active');
         }
     } else {
         const minutes = Math.floor(remaining / 60);
@@ -314,18 +397,23 @@ function updateCountdown(endTime, drawn) {
 // 更新购买按钮状态
 function updateBuyButton() {
     const buyBtn = document.getElementById('buyBtn');
+    if (!buyBtn) return;
+    
     if (!isConnected) {
         buyBtn.disabled = true;
         buyBtn.innerText = '请先连接钱包';
         return;
     }
-    const roundId = parseInt(document.getElementById('currentRound').innerText);
+    
+    const roundIdEl = document.getElementById('currentRound');
+    const roundId = roundIdEl ? parseInt(roundIdEl.innerText) : 0;
+    
     if (roundId === 0) {
         buyBtn.disabled = true;
         buyBtn.innerText = '等待启动';
         return;
     }
-    // 检查是否已开奖或结束？由合约控制，前端简单启用
+    
     buyBtn.disabled = false;
     buyBtn.innerText = '确认购买';
 }
@@ -336,21 +424,20 @@ async function buyTickets(ticketCount) {
         showToast('请先连接钱包');
         return;
     }
-    const amount = ticketCount * 100; // 100 AI币/张
+    
+    const amount = ticketCount * 100;
     const amountWei = parseAmount(amount.toString(), tokenDecimals);
 
     try {
         // 检查授权
         const allowance = await tokenContract.allowance(currentAccount, CONFIG.contractAddress);
         if (allowance.lt(amountWei)) {
-            showToast('请先授权代币', 2000);
-            // 尝试授权
+            showToast('正在授权代币...', 2000);
             const txApprove = await tokenContract.approve(CONFIG.contractAddress, ethers.constants.MaxUint256);
             await txApprove.wait();
             showToast('授权成功', 2000);
         }
 
-        // 调用购买
         const tx = await contract.buyTicket(amountWei);
         showToast('交易已发送，等待确认...', 3000);
         await tx.wait();
@@ -359,21 +446,30 @@ async function buyTickets(ticketCount) {
         loadRoundHistory();
     } catch (e) {
         console.error(e);
-        showToast('购买失败: ' + e.message);
+        showToast('购买失败: ' + (e.reason || e.message));
     }
 }
 
 // ==================== 燃烧代币 ====================
 async function burnTokens(amountStr) {
-    if (!isConnected) return;
+    if (!isConnected) {
+        showToast('请先连接钱包');
+        return;
+    }
+    
     const amount = parseFloat(amountStr);
-    if (amount <= 0) return;
+    if (amount <= 0) {
+        showToast('请输入有效数量');
+        return;
+    }
+    
     const amountWei = parseAmount(amount.toString(), tokenDecimals);
 
     try {
         // 检查授权
         const allowance = await tokenContract.allowance(currentAccount, CONFIG.contractAddress);
         if (allowance.lt(amountWei)) {
+            showToast('正在授权代币...', 2000);
             const txApprove = await tokenContract.approve(CONFIG.contractAddress, ethers.constants.MaxUint256);
             await txApprove.wait();
         }
@@ -383,28 +479,43 @@ async function burnTokens(amountStr) {
         await tx.wait();
         showToast('燃烧成功！');
         refreshData();
+        loadBurnRank(); // 刷新排行
     } catch (e) {
-        showToast('燃烧失败: ' + e.message);
+        showToast('燃烧失败: ' + (e.reason || e.message));
     }
 }
 
 // ==================== 领取分红 ====================
 async function claimDividend() {
-    if (!isConnected) return;
+    if (!isConnected) {
+        showToast('请先连接钱包');
+        return;
+    }
+    
     try {
+        const pendingDiv = await contract.pendingDividend(currentAccount);
+        if (pendingDiv.eq(0)) {
+            showToast('没有可领取的分红');
+            return;
+        }
+        
         const tx = await contract.claimTaxDividend();
         showToast('领取交易已发送...');
         await tx.wait();
         showToast('领取成功！');
         refreshData();
     } catch (e) {
-        showToast('领取失败: ' + e.message);
+        showToast('领取失败: ' + (e.reason || e.message));
     }
 }
 
 // ==================== 开奖 ====================
 async function drawRound(roundId) {
-    if (!isConnected) return;
+    if (!isConnected) {
+        showToast('请先连接钱包');
+        return;
+    }
+    
     try {
         const tx = await contract.drawRound(roundId);
         showToast('开奖交易已发送...');
@@ -413,13 +524,17 @@ async function drawRound(roundId) {
         refreshData();
         loadRoundHistory();
     } catch (e) {
-        showToast('开奖失败: ' + e.message);
+        showToast('开奖失败: ' + (e.reason || e.message));
     }
 }
 
 // ==================== 领取单个轮次奖金 ====================
 async function claimPrize(roundId) {
-    if (!isConnected) return;
+    if (!isConnected) {
+        showToast('请先连接钱包');
+        return;
+    }
+    
     try {
         const tx = await contract.claimPrize(roundId);
         showToast('领取交易已发送...');
@@ -428,31 +543,37 @@ async function claimPrize(roundId) {
         refreshData();
         loadRoundHistory();
     } catch (e) {
-        showToast('领取失败: ' + e.message);
+        showToast('领取失败: ' + (e.reason || e.message));
     }
 }
 
 // ==================== 一键领取所有奖金 ====================
 async function claimAllPrizes() {
-    if (!isConnected) return;
-    // 获取用户有未领奖金的轮次
-    const roundIds = userRounds.filter(r => r.unclaimedCount > 0).map(r => r.roundId);
-    if (roundIds.length === 0) {
+    if (!isConnected) {
+        showToast('请先连接钱包');
+        return;
+    }
+    
+    const unclaimedRounds = userRounds.filter(r => r.unclaimedCount > 0);
+    if (unclaimedRounds.length === 0) {
         showToast('没有可领取的奖金');
         return;
     }
-    showToast(`开始领取 ${roundIds.length} 个轮次的奖金...`, 3000);
-    for (let rid of roundIds) {
+    
+    showToast(`开始领取 ${unclaimedRounds.length} 个轮次的奖金...`, 3000);
+    
+    let successCount = 0;
+    for (let r of unclaimedRounds) {
         try {
-            const tx = await contract.claimPrize(rid);
+            const tx = await contract.claimPrize(r.roundId);
             await tx.wait();
+            successCount++;
         } catch (e) {
-            console.error(`轮次 ${rid} 领取失败`, e);
-            showToast(`轮次 ${rid} 领取失败: ${e.message}`);
-            // 继续尝试下一个
+            console.error(`轮次 ${r.roundId} 领取失败`, e);
         }
     }
-    showToast('批量领取完成！');
+    
+    showToast(`成功领取 ${successCount} 个轮次！`);
     refreshData();
     loadRoundHistory();
 }
@@ -460,14 +581,17 @@ async function claimAllPrizes() {
 // ==================== 加载历史开奖记录 ====================
 async function loadRoundHistory() {
     if (!contract) await initContract();
+    
     const historyDiv = document.getElementById('historyList');
     const claimAllBtn = document.getElementById('claimAllBtn');
+    
+    if (!historyDiv) return;
 
     try {
         const roundId = await contract.roundId();
         if (roundId === 0) {
             historyDiv.innerHTML = '<div class="empty-history">暂无历史记录</div>';
-            claimAllBtn.style.display = 'none';
+            if (claimAllBtn) claimAllBtn.style.display = 'none';
             return;
         }
 
@@ -475,83 +599,182 @@ async function loadRoundHistory() {
         let hasUnclaimed = false;
         userRounds = [];
 
-        // 从最新轮次往前遍历（最多20轮）
-        const start = roundId > 20 ? roundId - 19 : 1;
+        // 从最新轮次往前遍历（最多10轮）
+        const start = roundId > 10 ? roundId - 9 : 1;
+        
         for (let i = roundId; i >= start; i--) {
-            const info = await contract.getRoundInfo(i);
-            const drawn = info.drawn;
-            const winners = info.winners;
-            const shares = info.winnerShares;
-            const prizePool = info.prizePool;
+            try {
+                const info = await contract.getRoundInfo(i);
+                const drawn = info.drawn;
+                const winners = info.winners;
+                const prizePool = info.prizePool;
 
-            let userWon = false;
-            let userClaimedCount = 0;
-            let userUnclaimedCount = 0;
-            let userTotalAmount = 0;
+                let userWon = false;
+                let userUnclaimedCount = 0;
 
-            if (currentAccount && drawn) {
-                // 获取用户在该轮次的中奖信息
-                try {
-                    const userInfo = await contract.getUserPrizeInfo(i, currentAccount);
-                    userTotalAmount = userInfo.totalWon;
-                    userClaimedCount = userInfo.claimedCount;
-                    userUnclaimedCount = userInfo.unclaimedCount;
-                    userWon = userTotalAmount.gt(0);
-                    if (userUnclaimedCount > 0) hasUnclaimed = true;
-                } catch (e) {}
-            }
-
-            if (drawn) {
-                const winnersList = winners.join(', ').substring(0, 30) + (winners.length > 2 ? '...' : '');
-                const itemClass = userWon ? 'history-item won' : 'history-item';
-                html += `<div class="${itemClass}">
-                    <div class="round-info">
-                        <div class="round-id">第 ${i} 期 ${userWon ? '<span class="winner-badge">中奖</span>' : ''}</div>
-                        <div class="round-pool">奖池: ${formatAmount(prizePool, tokenDecimals)} AI币</div>
-                    </div>
-                    <div class="round-detail">
-                        <div>${winnersList}</div>`;
-                if (userWon && userUnclaimedCount > 0) {
-                    html += `<button class="claim-btn-small can-claim" onclick="ContractAPI.claimPrize(${i})">领取</button>`;
-                } else if (userWon && userUnclaimedCount === 0) {
-                    html += `<span style="color:#00b894;">已领</span>`;
+                if (currentAccount && drawn) {
+                    try {
+                        const userInfo = await contract.getUserPrizeInfo(i, currentAccount);
+                        userWon = userInfo.totalWon.gt(0);
+                        userUnclaimedCount = userInfo.unclaimedCount;
+                        if (userUnclaimedCount > 0) {
+                            hasUnclaimed = true;
+                            userRounds.push({
+                                roundId: i,
+                                unclaimedCount: userUnclaimedCount
+                            });
+                        }
+                    } catch (e) {}
                 }
-                html += `</div></div>`;
+
+                if (drawn) {
+                    const winnersText = winners.length > 0 
+                        ? `${winners.length}位中奖者` 
+                        : '无人中奖';
+                    
+                    const itemClass = userWon ? 'history-item won' : 'history-item';
+                    
+                    html += `
+                    <div class="${itemClass}">
+                        <div class="round-info">
+                            <div class="round-id">第 ${i} 期 ${userWon ? '<span class="winner-badge">中奖</span>' : ''}</div>
+                            <div class="round-pool">奖池: ${formatAmount(prizePool, tokenDecimals)} AI币</div>
+                        </div>
+                        <div class="round-detail">
+                            <div>${winnersText}</div>
+                            ${userWon && userUnclaimedCount > 0 
+                                ? `<button class="claim-btn-small can-claim" onclick="ContractAPI.claimPrize(${i})">领取</button>`
+                                : userWon ? '<span style="color:#00b894;">已领</span>' : ''
+                            }
+                        </div>
+                    </div>`;
+                }
+            } catch (e) {
+                console.error(`加载轮次 ${i} 失败`, e);
             }
         }
 
         if (html === '') {
             html = '<div class="empty-history">暂无历史记录</div>';
         }
+        
         historyDiv.innerHTML = html;
-        claimAllBtn.style.display = hasUnclaimed ? 'flex' : 'none';
+        if (claimAllBtn) claimAllBtn.style.display = hasUnclaimed ? 'flex' : 'none';
 
     } catch (e) {
         console.error('加载历史失败', e);
+        historyDiv.innerHTML = '<div class="empty-history">加载失败</div>';
+    }
+}
+
+// ==================== 加载燃烧排行 ====================
+async function loadBurnRank() {
+    if (!contract) await initContract();
+    
+    const rankList = document.getElementById('rankList');
+    if (!rankList) return;
+
+    try {
+        // 通过Burn事件获取燃烧数据
+        const filter = contract.filters.Burn();
+        const events = await contract.queryFilter(filter, 0, 'latest');
+        
+        // 统计每个地址的燃烧量
+        const burnMap = new Map();
+        
+        events.forEach(event => {
+            const user = event.args.user;
+            const amount = event.args.amount;
+            
+            if (burnMap.has(user)) {
+                burnMap.set(user, burnMap.get(user).add(amount));
+            } else {
+                burnMap.set(user, amount);
+            }
+        });
+        
+        // 转换为数组并排序
+        const sortedBurns = Array.from(burnMap.entries())
+            .sort((a, b) => b[1].cmp(a[1]))
+            .slice(0, 20); // 前20名
+        
+        burnRankData = sortedBurns;
+
+        if (sortedBurns.length === 0) {
+            rankList.innerHTML = '<div class="empty-rank">暂无燃烧记录</div>';
+            return;
+        }
+
+        let html = `
+        <div class="rank-header">
+            <span>排名</span>
+            <span>地址</span>
+            <span>燃烧量</span>
+        </div>`;
+
+        sortedBurns.forEach((item, index) => {
+            const rank = index + 1;
+            const address = item[0];
+            const amount = item[1];
+            const rankClass = rank <= 3 ? `rank-${rank}` : '';
+            
+            html += `
+            <div class="rank-item">
+                <div class="rank-number ${rankClass}">#${rank}</div>
+                <div class="rank-address" title="${address}">${shortenAddress(address)}</div>
+                <div class="rank-amount">${formatAmount(amount, tokenDecimals)} AI</div>
+            </div>`;
+        });
+
+        rankList.innerHTML = html;
+
+    } catch (e) {
+        console.error('加载燃烧排行失败', e);
+        rankList.innerHTML = '<div class="empty-rank">加载失败</div>';
     }
 }
 
 // ==================== 更新中奖概率 ====================
 async function updateWinChance() {
     if (!currentAccount || !contract) return;
+    
     try {
         const tickets = await contract.tickets(currentAccount);
         const currentRoundInfo = await contract.getCurrentRoundInfo();
         const totalTickets = currentRoundInfo.totalTickets;
+        
+        const winChanceEl = document.getElementById('winChance');
+        if (!winChanceEl) return;
+        
         if (totalTickets > 0) {
             const chance = (tickets * 100) / totalTickets;
-            document.getElementById('winChance').innerText = chance.toFixed(2) + '%';
+            winChanceEl.innerText = chance.toFixed(2) + '%';
         } else {
-            document.getElementById('winChance').innerText = '0%';
+            winChanceEl.innerText = '0%';
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error('更新中奖概率失败', e);
+    }
 }
 
 // ==================== 更新每日分红估算 ====================
 async function updateDailyDividend(burnAmount) {
-    // 估算逻辑：根据当前pendingTax和总权重，乘以用户的权重
-    // 这里简化，根据过去24小时分红估算？无法简单估算，暂时不实现
-    document.getElementById('dailyDividend').innerText = '0';
+    const dailyDividendEl = document.getElementById('dailyDividend');
+    if (!dailyDividendEl || !contract) return;
+    
+    try {
+        const amount = parseFloat(burnAmount) || 0;
+        if (amount === 0) {
+            dailyDividendEl.innerText = '0';
+            return;
+        }
+        
+        const amountWei = parseAmount(amount.toString(), tokenDecimals);
+        const daily = await estimateDailyDividend(amountWei);
+        dailyDividendEl.innerText = daily;
+    } catch (e) {
+        dailyDividendEl.innerText = '0';
+    }
 }
 
 // ==================== 导出API ====================
@@ -565,9 +788,9 @@ window.ContractAPI = {
     claimPrize,
     claimAllPrizes,
     loadRoundHistory,
+    loadBurnRank,
     updateWinChance,
     updateDailyDividend,
-    // 辅助
     getContract: () => contract
 };
 
@@ -575,6 +798,13 @@ window.ContractAPI = {
 initContract().then(() => {
     refreshData();
     loadRoundHistory();
+    
+    // 启动定时刷新
+    setInterval(() => {
+        if (document.getElementById('homePage')?.classList.contains('active')) {
+            refreshData();
+        }
+    }, 30000); // 30秒刷新一次
 });
 
 // 监听网络变化
