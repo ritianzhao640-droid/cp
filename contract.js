@@ -1,10 +1,5 @@
 // contract.js - SwimLotteryPure 合约对接配置
-// 在 CONFIG 后添加禁用ENS的配置
-const providerOptions = {
-    name: 'binance',
-    chainId: 56,
-    ensAddress: null
-};
+
 const CONFIG = {
     // BSC主网配置（测试网改为97）
     CHAIN_ID: 56,
@@ -14,7 +9,6 @@ const CONFIG = {
     CONTRACTS: {
         LOTTERY: '0xYourLotteryContractAddressHere',  // SwimLotteryPure合约地址
     },
-    
     // 合约完整ABI
     ABI: {
         LOTTERY: [
