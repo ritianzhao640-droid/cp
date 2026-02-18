@@ -10,7 +10,7 @@ const CONFIG = {
     // 请替换为实际WBNB地址（BSC主网：0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c）
     wbnbAddress: '0x...',
     // 链ID (BSC主网56，测试网97)
-    chainId: 97,
+    chainId: 56,
     // RPC URL (可选，用于只读操作)
     rpcUrl: 'https://data-seed-prebsc-1-s1.binance.org:8545/'
 };
