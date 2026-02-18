@@ -1,76 +1,240 @@
 // contract.js
-// SwimLotteryPure 合约前端交互模块 (ethers.js v5)
+// AI彩票项目 - 双合约接口配置 (ethers.js v5)
 
 // ==================== 配置 ====================
 const CONFIG = {
-    // 请替换为实际部署的合约地址
-    contractAddress: '0x...',
-    // 请替换为实际代币地址（AI币）
-    tokenAddress: '0x...',
-    // 请替换为实际WBNB地址（BSC主网：0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c）
+    // 销毁分红合约地址（接收3%税收、处理燃烧、分红、彩票逻辑）
+    burnPoolAddress: '0x07bA400b488fa4F3dBeDA52d5f1842a8EB67cA25',
+    
+    // 代币合约地址（AI币）
+    tokenAddress: '0x5437ccc083f121c5d1994d83f4f32a9cd2c57777',
+    
+    // WBNB地址（BSC主网）
     wbnbAddress: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
+    
     // 链ID (BSC主网56，测试网97)
     chainId: 56,
-    // RPC URL (可选，用于只读操作)
+    
+    // RPC URL
     rpcUrl: 'https://bsc-dataseed.binance.org/'
 };
 
-// ==================== ABI ====================
-const CONTRACT_ABI = [
-    // ---------- 视图函数 ----------
-    "function token() view returns (address)",
-    "function wbnb() view returns (address)",
-    "function tokenSet() view returns (bool)",
-    "function burnWeight(address) view returns (uint256)",
-    "function totalBurnWeight() view returns (uint256)",
-    "function pendingTax() view returns (uint256)",
-    "function accTaxPerShare() view returns (uint256)",
-    "function userAccTaxPerShare(address) view returns (uint256)",
-    "function unclaimedDividend(address) view returns (uint256)",
-    "function totalStaked() view returns (uint256)",
-    "function tickets(address) view returns (uint256)",
-    "function roundId() view returns (uint256)",
-    "function prizeReleaseRate() view returns (uint256)",
-    "function totalUnclaimedPrizes() view returns (uint256)",
-    "function getWBNBBalance() view returns (uint256)",
-    "function getCurrentRoundInfo() view returns (uint256 roundId, uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, bool drawn, uint256 timeRemaining, bool canDraw)",
-    "function getRoundInfo(uint256 _roundId) view returns (uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, bool drawn, address[] memory winners, uint256[] memory winnerShares)",
-    "function getUserPrizeInfo(uint256 _roundId, address user) view returns (uint256 totalWon, uint256 claimedCount, uint256 unclaimedCount, uint256 unclaimedAmount)",
-    "function pendingDividend(address user) view returns (uint256)",
-    
-    // ---------- 写函数 ----------
-    "function setToken(address _token) external",
-    "function burnForDividend(uint256 amount) external",
-    "function buyTicket(uint256 amount) external",
-    "function claimTaxDividend() external",
-    "function drawRound(uint256 _roundId) external",
-    "function claimPrize(uint256 _roundId) external",
-    
-    // ---------- 事件 ----------
-    "event TokenSet(address indexed token, address indexed wbnb)",
-    "event Burn(address indexed user, uint256 amount, uint256 cachedDividend)",
-    "event TicketBought(address indexed user, uint256 amount, uint256 roundId)",
-    "event DividendClaimed(address indexed user, uint256 wbnbAmount)",
-    "event NewRound(uint256 indexed roundId, uint256 prizePool, uint256 startTime, uint256 endTime)",
-    "event RoundDrawn(uint256 indexed roundId, address[] winners, uint256[] shares, uint256 randomSeed)",
-    "event PrizeClaimed(address indexed user, uint256 indexed roundId, uint256 amount, uint256 claimCount)",
-    "event TaxReceived(uint256 bnbAmount)",
-    "event DividendCached(address indexed user, uint256 amount)"
-];
+// ==================== ABI 定义 ====================
 
-// ERC20 ABI (简化)
-const ERC20_ABI = [
-    "function balanceOf(address) view returns (uint256)",
-    "function transfer(address to, uint256 amount) returns (bool)",
-    "function approve(address spender, uint256 amount) returns (bool)",
-    "function allowance(address owner, address spender) view returns (uint256)",
-    "function decimals() view returns (uint8)",
-    "function symbol() view returns (string)",
-    "event Transfer(address indexed from, address indexed to, uint256 value)"
-];
+// ---------- 1. 销毁分红合约 ABI (BurnPool Contract) ----------
+const BURN_POOL_ABI = [
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "spender",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "value",
+				"type": "uint256"
+			}
+		],
+		"name": "Approval",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "value",
+				"type": "uint256"
+			}
+		],
+		"name": "Transfer",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "spender",
+				"type": "address"
+			}
+		],
+		"name": "allowance",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "spender",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "value",
+				"type": "uint256"
+			}
+		],
+		"name": "approve",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "account",
+				"type": "address"
+			}
+		],
+		"name": "balanceOf",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "deposit",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalSupply",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "value",
+				"type": "uint256"
+			}
+		],
+		"name": "transfer",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "value",
+				"type": "uint256"
+			}
+		],
+		"name": "transferFrom",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "withdraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+]
 
-// ==================== 状态 ====================
-let provider, signer, contract, tokenContract;
+// ---------- 2. 代币合约 ABI (Token Contract) ----------
+const TOKEN_ABI = [
+   [{"输入":[{"组件":[{"内部类型":"地址","名称":"PCS_V2_FACTORY","类型":"地址"},{"内部类型":"bytes32","名称":"PCS_V2_CODE_HASH","类型":"bytes32"},{"内部类型":"地址","名称":"PCS_V2_ROUTER","类型":"地址"},{"内部类型":"地址","名称":"PCS_SMART_ROUTER","t类型":"地址"},{"内部类型":"地址","名称":"WETH","类型":"地址"},{"内部类型":"地址","名称":"PCS_V3_FACTORY","类型":"地址"},{"内部类型":"bytes32","名称":"PCS_V3_CODE_HASH","类型":"bytes32"},{"内部类型":"地址","名称":"UNI_V2_FACTORY","类型":"地址"},{"内部类型":"内部类型":"地址"} {"internalType":"bytes32","name":"UNI_V2_CODE_HASH","type":"bytes32"},{"internalType":"address","name":"UNI_V3_FACTORY","type":"address"},{"internalType":"bytes32","name":"UNI_V3_CODE_HASH","type":"bytes32"},{"internalType":"address","name":"PCS_V4_VAULT","type":"address"},{"internalType":"ad"连衣裙","名称":"UNI_V4_POOL","类型":"地址"},{"内部类型":"uint256","名称":"MIN_LIQ_THRESHOLD","类型":"uint256"},{"内部类型":"uint256","名称":"START_LIQ_THRESHOLD","类型":"uint256"},{"内部类型":"uint256","名称":"ANTI_FARMER_DURATION","类型":"uint256"}],"内部类型":"结构体FlapTaxToken.ConstructorParams","name":"params","type":"tuple"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[],"name":"EIP712DomainChanged", type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"quoteToken","type":"address"},{"indexed":false,"internalType":"uint256","name":"taxAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"outputAmount","type":"uint256"}],"name":"FlapTaxLiquidationSuccess","type":"event"},{"anonymous":false,"inputs":[{"ind exed":false,"internalType":"uint8","name":"version","type":"uint8"}],"name":"Initialized","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"intern alType":"uint8","name":"fromState","type":"uint8"},{"indexed":false,"internalType":"uint8","name":"toState","type":"uint8"}],"name":"PoolStateChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes","name":"reason","type":"bytes"}],"name":"TaxLiquidationError","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"fr om","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"from","type":"address"},{"indexed":false,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"TransferFlapToken","type":"event"},{"inputs":[],"name":"ANTI_FARMER_DURATION","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"DOMAIN_SEPARATOR","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view ","type":"function"},{"inputs":[],"name":"MIN_LIQ_THRESHOLD","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"QUOTE_TOKEN","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"START_LIQ_THRESHOLD","outputs":[{"internalType": "uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"TAX_DURATION","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","out puts":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"antiFarmerExpirationTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"decimals","outputs" :[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"subtractedValue","type":"uint256"}],"name":"decreaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inpu ts":[],"name":"eip712Domain","outputs":[{"internalType":"bytes1","name":"fields","type":"bytes1"},{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"version","type":"string"},{"internalType":"uint256","name":"chainId","type":"uint256"},{"internalType":"address","name":"verifyingContract","type":"address"},{"internalType":"bytes32","name":"sa lt","type":"bytes32"},{"internalType":"uint256[]","name":"extensions","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"finalizeMigration","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"addedValue","type":"uint256"}],"name":"increaseAllowance",outputs":[{"internalType":"bool",name":"",type":"bool"}],"stateMutability":"nonpayable",type":"function"},{"inputs":[{"components":[{"internalType":"string",name":"name",type":"string"},{"internalType":"string",name":"symbol",type":"string"},{"internalType":"string",name":"meta",type":"string"},{"internalT类型":"uint16","名称":"税","类型":"uint16"},{"内部类型":"地址","名称":"税分割器","类型":"地址"},{"内部类型":"地址","名称":"报价令牌","类型":"地址"},{"内部类型":"uint256","名称":"liq预期输出金额","类型":"uint256"},{"内部类型":"uint256","名称":"税时长","类型":"uint256"}],"内部类型":"结构体{{"IFlapTaxToken.InitParams", name":"params", type":"tuple"}]", name":"initialize", outputs":[]", stateMutability":"nonpayable", type":"function"},{"inputs":[]", name":"liqExpectedOutputAmount", outputs":[{"internalType":"uint256", name":""", type":"uint256"}]", stateMutability":"view", type":"function"},{"inputs":[]", name":"liquidationThreshold", outputs":[{"internalType":"uint256", name":""", type":"uint256"}]", stateMutability":"view", type":"function"} e":"function"},{"inputs":[],"name":"mainPool","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"metaURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"nonces","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name": "owner",outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"uint256","name":"deadline"," type":"uint256"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"permit","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"pools","outputs":[{"i nternalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"startMigration","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"state","outputs":[{"internalType":"enum FlapTaxToken.PoolState","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxExpirationTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxRate","outputs":[{"internalType":"uint16","name":"" ,"type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxSplitter","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{ "internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"addr ess"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxExpirationTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxRate","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"fu nction"},{"inputs":[],"name":"taxSplitter","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to" ,"type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalTy pe":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxExpirationTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxRate","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"fu nction"},{"inputs":[],"name":"taxSplitter","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to" ,"type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalTy pe":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxRate","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxSplitter","outputs":[{"internalType":"address","name":"","type":"a ddress"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type ":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","ty pe":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxRate","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxSplitter","outputs":[{"internalType":"address","name":"","type":"a ddress"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type ":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","ty pe":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}][{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"fu nction"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}][{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"fu nction"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]
+
+// ==================== 状态管理 ====================
+let provider, signer;
+let burnPoolContract, tokenContract;
 let currentAccount = null;
 let isConnected = false;
 let tokenDecimals = 18;
@@ -79,7 +243,7 @@ let tokenSymbol = 'AI';
 // 缓存数据
 let cachedRounds = {};
 let userRounds = [];
-let burnRankData = []; // 燃烧排行数据
+let burnRankData = [];
 
 // ==================== 工具函数 ====================
 function showToast(msg, duration = 3000) {
@@ -97,7 +261,12 @@ function formatAmount(amount, decimals = 18, fixed = 4) {
 }
 
 function parseAmount(amountStr, decimals = 18) {
-    return ethers.utils.parseUnits(amountStr, decimals);
+    try {
+        return ethers.utils.parseUnits(amountStr.toString(), decimals);
+    } catch (e) {
+        console.error('Parse amount error:', e);
+        return ethers.BigNumber.from(0);
+    }
 }
 
 function shortenAddress(addr) {
@@ -105,7 +274,11 @@ function shortenAddress(addr) {
     return addr.slice(0, 6) + '...' + addr.slice(-4);
 }
 
-// ==================== 初始化 ====================
+// ==================== 初始化函数 ====================
+
+/**
+ * 初始化 Provider（只读模式）
+ */
 async function initProvider() {
     if (window.ethereum) {
         provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -116,44 +289,71 @@ async function initProvider() {
     return provider;
 }
 
-async function initContract() {
+/**
+ * 初始化所有合约（只读模式）
+ */
+async function initContracts() {
     if (!provider) await initProvider();
-    contract = new ethers.Contract(CONFIG.contractAddress, CONTRACT_ABI, provider);
-    tokenContract = new ethers.Contract(CONFIG.tokenAddress, ERC20_ABI, provider);
+    
+    // 初始化销毁分红合约
+    burnPoolContract = new ethers.Contract(CONFIG.burnPoolAddress, BURN_POOL_ABI, provider);
+    
+    // 初始化代币合约
+    tokenContract = new ethers.Contract(CONFIG.tokenAddress, TOKEN_ABI, provider);
+    
+    // 获取代币基本信息
     try {
-        tokenDecimals = await tokenContract.decimals();
-        tokenSymbol = await tokenContract.symbol();
+        [tokenDecimals, tokenSymbol] = await Promise.all([
+            tokenContract.decimals(),
+            tokenContract.symbol()
+        ]);
     } catch (e) {
-        console.warn('获取代币信息失败', e);
+        console.warn('获取代币信息失败，使用默认值:', e);
+        tokenDecimals = 18;
+        tokenSymbol = 'AI';
     }
+    
+    return { burnPoolContract, tokenContract };
 }
 
-// ==================== 连接钱包 ====================
+/**
+ * 使用 Signer 重新连接合约（可写模式）
+ */
+async function connectContractsWithSigner() {
+    if (!signer) throw new Error('No signer available');
+    
+    burnPoolContract = burnPoolContract.connect(signer);
+    tokenContract = tokenContract.connect(signer);
+    
+    return { burnPoolContract, tokenContract };
+}
+
+// ==================== 钱包连接 ====================
+
+/**
+ * 连接钱包
+ */
 async function connectWallet() {
     if (!window.ethereum) {
         showToast('请安装MetaMask');
         return;
     }
+    
     try {
+        // 请求账户授权
         await window.ethereum.request({ method: 'eth_requestAccounts' });
+        
+        // 重新初始化 provider 和 signer
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
         currentAccount = await signer.getAddress();
         isConnected = true;
 
         // 更新UI
-        const connectBtn = document.getElementById('connectBtn');
-        if (connectBtn) connectBtn.innerText = shortenAddress(currentAccount);
+        updateWalletUI();
         
-        const refreshBtn = document.getElementById('refreshBtn');
-        if (refreshBtn) refreshBtn.style.display = 'inline-block';
-        
-        const walletTip = document.getElementById('walletTip');
-        if (walletTip) walletTip.style.display = 'block';
-
-        // 初始化合约（带signer）
-        contract = contract.connect(signer);
-        tokenContract = tokenContract.connect(signer);
+        // 使用 signer 重新连接合约
+        await connectContractsWithSigner();
 
         // 检查网络
         const network = await provider.getNetwork();
@@ -162,166 +362,314 @@ async function connectWallet() {
         }
 
         // 刷新数据
-        await refreshData();
-        await loadRoundHistory();
+        await refreshAllData();
 
         // 监听账户变化
-        window.ethereum.on('accountsChanged', (accounts) => {
-            if (accounts.length === 0) {
-                disconnectWallet();
-            } else {
-                currentAccount = accounts[0];
-                const btn = document.getElementById('connectBtn');
-                if (btn) btn.innerText = shortenAddress(currentAccount);
-                refreshData();
-            }
-        });
+        setupEventListeners();
 
     } catch (e) {
-        console.error(e);
+        console.error('连接钱包失败:', e);
         showToast('连接钱包失败: ' + e.message);
     }
 }
 
+/**
+ * 断开钱包连接
+ */
 function disconnectWallet() {
     isConnected = false;
     currentAccount = null;
     signer = null;
-    const connectBtn = document.getElementById('connectBtn');
-    if (connectBtn) connectBtn.innerText = '连接钱包';
     
-    const refreshBtn = document.getElementById('refreshBtn');
-    if (refreshBtn) refreshBtn.style.display = 'none';
+    // 重置为只读模式
+    if (provider) {
+        burnPoolContract = new ethers.Contract(CONFIG.burnPoolAddress, BURN_POOL_ABI, provider);
+        tokenContract = new ethers.Contract(CONFIG.tokenAddress, TOKEN_ABI, provider);
+    }
     
-    const walletTip = document.getElementById('walletTip');
-    if (walletTip) walletTip.style.display = 'none';
-    
-    refreshData();
+    updateWalletUI();
+    refreshAllData();
 }
 
-// ==================== 数据刷新 ====================
-async function refreshData() {
-    if (!contract) await initContract();
-
-    try {
-        // 获取公共数据
-        const roundId = await contract.roundId();
-        const wbnbBalance = await contract.getWBNBBalance();
-        
-        // 获取当前轮次信息
-        let currentRoundInfo = null;
-        if (roundId > 0) {
-            currentRoundInfo = await contract.getCurrentRoundInfo();
-        }
-
-        // 如果有连接的用户，获取用户数据
-        if (currentAccount) {
-            const userBalance = await tokenContract.balanceOf(currentAccount);
-            const burnWeight = await contract.burnWeight(currentAccount);
-            const tickets = await contract.tickets(currentAccount);
-            const pendingDiv = await contract.pendingDividend(currentAccount);
-            
-            // 获取累计分红（通过事件计算或合约新加函数）
-            const totalClaimed = await getTotalClaimedDividend(currentAccount);
-            
-            // 更新UI
-            const userBalanceEl = document.getElementById('userBalance');
-            if (userBalanceEl) userBalanceEl.innerText = formatAmount(userBalance, tokenDecimals);
-            
-            const burnPointsEl = document.getElementById('burnPoints');
-            if (burnPointsEl) burnPointsEl.innerText = formatAmount(burnWeight, tokenDecimals);
-            
-            const burnWeightEl = document.getElementById('burnWeight');
-            if (burnWeightEl) burnWeightEl.innerText = formatAmount(burnWeight, tokenDecimals);
-            
-            const totalBurnedEl = document.getElementById('totalBurned');
-            if (totalBurnedEl) totalBurnedEl.innerText = formatAmount(burnWeight, tokenDecimals) + ' AI币';
-            
-            const myTicketCountEl = document.getElementById('myTicketCount');
-            if (myTicketCountEl) myTicketCountEl.innerText = tickets.toString();
-            
-            const claimableAmountEl = document.getElementById('claimableAmount');
-            if (claimableAmountEl) claimableAmountEl.innerText = formatAmount(pendingDiv, 18, 6);
-            
-            const totalDividendEl = document.getElementById('totalDividend');
-            if (totalDividendEl) totalDividendEl.innerText = formatAmount(totalClaimed, 18, 6) + ' WBNB';
-            
-            const dailyDividendEl = document.getElementById('dailyDividend');
-            if (dailyDividendEl) {
-                // 估算每日分红
-                const daily = await estimateDailyDividend(burnWeight);
-                dailyDividendEl.innerText = daily;
-            }
-        } else {
-            // 清空用户相关
-            const elements = ['userBalance', 'burnPoints', 'burnWeight', 'myTicketCount', 'claimableAmount'];
-            elements.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.innerText = '0';
-            });
-        }
-
-        // 更新公共UI
-        const dividendPoolEl = document.getElementById('dividendPool');
-        if (dividendPoolEl) dividendPoolEl.innerText = formatAmount(wbnbBalance, 18, 4);
-        
-        const jackpotAmountEl = document.getElementById('jackpotAmount');
-        if (jackpotAmountEl) jackpotAmountEl.innerText = currentRoundInfo ? formatAmount(currentRoundInfo.prizePool, tokenDecimals) : '0';
-        
-        // 更新当前轮次显示
-        if (currentRoundInfo) {
-            const currentRoundEl = document.getElementById('currentRound');
-            if (currentRoundEl) currentRoundEl.innerText = currentRoundInfo.roundId;
-            
-            const roundPoolDisplayEl = document.getElementById('roundPoolDisplay');
-            if (roundPoolDisplayEl) roundPoolDisplayEl.innerText = formatAmount(currentRoundInfo.prizePool, tokenDecimals);
-            
-            const totalTicketsDisplayEl = document.getElementById('totalTicketsDisplay');
-            if (totalTicketsDisplayEl) totalTicketsDisplayEl.innerText = currentRoundInfo.totalTickets.toString();
-            
-            const participantCountEl = document.getElementById('participantCount');
-            if (participantCountEl) participantCountEl.innerText = currentRoundInfo.totalTickets.toString();
-            
-            // 状态显示
-            const roundStatusEl = document.getElementById('roundStatus');
-            if (roundStatusEl) {
-                if (currentRoundInfo.drawn) {
-                    roundStatusEl.innerText = '已开奖';
-                    roundStatusEl.className = 'round-status-badge status-drawn';
-                } else if (Date.now() / 1000 >= currentRoundInfo.endTime) {
-                    roundStatusEl.innerText = '可开奖';
-                    roundStatusEl.className = 'round-status-badge status-pending';
-                } else {
-                    roundStatusEl.innerText = '进行中';
-                    roundStatusEl.className = 'round-status-badge status-active';
-                }
-            }
-
-            // 更新倒计时
-            updateCountdown(currentRoundInfo.endTime, currentRoundInfo.drawn);
-        }
-
-        // 更新按钮状态
-        updateBuyButton();
-        
-        const burnButton = document.getElementById('burnButton');
-        if (burnButton) burnButton.disabled = !isConnected;
-        
-        const claimButton = document.getElementById('claimButton');
-        if (claimButton) claimButton.disabled = !isConnected;
-
-    } catch (e) {
-        console.error('刷新数据失败', e);
-        // 不显示错误toast，避免频繁弹出
+/**
+ * 更新钱包相关UI
+ */
+function updateWalletUI() {
+    const connectBtn = document.getElementById('connectBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const walletTip = document.getElementById('walletTip');
+    
+    if (connectBtn) {
+        connectBtn.innerText = isConnected ? shortenAddress(currentAccount) : '连接钱包';
+    }
+    if (refreshBtn) {
+        refreshBtn.style.display = isConnected ? 'inline-block' : 'none';
+    }
+    if (walletTip) {
+        walletTip.style.display = isConnected ? 'block' : 'none';
     }
 }
 
-// 获取累计分红（通过查询事件）
-async function getTotalClaimedDividend(userAddress) {
-    if (!contract || !userAddress) return ethers.BigNumber.from(0);
+/**
+ * 设置事件监听
+ */
+function setupEventListeners() {
+    if (!window.ethereum) return;
+    
+    // 账户变化
+    window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+            disconnectWallet();
+        } else {
+            currentAccount = accounts[0];
+            updateWalletUI();
+            refreshAllData();
+        }
+    });
+    
+    // 链变化
+    window.ethereum.on('chainChanged', () => {
+        window.location.reload();
+    });
+}
+
+// ==================== 数据刷新 ====================
+
+/**
+ * 刷新所有数据
+ */
+async function refreshAllData() {
     try {
-        const filter = contract.filters.DividendClaimed(userAddress);
-        const events = await contract.queryFilter(filter, 0, 'latest');
+        await Promise.all([
+            refreshUserData(),
+            refreshPoolData(),
+            refreshRoundData()
+        ]);
+    } catch (e) {
+        console.error('刷新数据失败:', e);
+    }
+}
+
+/**
+ * 刷新用户相关数据
+ */
+async function refreshUserData() {
+    if (!burnPoolContract || !tokenContract) await initContracts();
+    
+    if (!currentAccount) {
+        // 未连接时清空用户数据
+        clearUserUI();
+        return;
+    }
+
+    try {
+        // 并行获取用户数据
+        const [
+            userBalance,
+            burnWeight,
+            tickets,
+            pendingDiv,
+            totalClaimed
+        ] = await Promise.all([
+            tokenContract.balanceOf(currentAccount),
+            burnPoolContract.burnWeight(currentAccount),
+            burnPoolContract.tickets(currentAccount),
+            burnPoolContract.pendingDividend(currentAccount),
+            getTotalClaimedDividend(currentAccount)
+        ]);
+
+        // 更新UI
+        updateUserUI({
+            userBalance,
+            burnWeight,
+            tickets,
+            pendingDiv,
+            totalClaimed
+        });
+
+    } catch (e) {
+        console.error('刷新用户数据失败:', e);
+    }
+}
+
+/**
+ * 刷新奖池数据
+ */
+async function refreshPoolData() {
+    if (!burnPoolContract) await initContracts();
+    
+    try {
+        const wbnbBalance = await burnPoolContract.getWBNBBalance();
+        
+        // 更新分红池显示
+        const dividendPoolEl = document.getElementById('dividendPool');
+        if (dividendPoolEl) {
+            dividendPoolEl.innerText = formatAmount(wbnbBalance, 18, 4) + ' WBNB';
+        }
+    } catch (e) {
+        console.error('刷新奖池数据失败:', e);
+    }
+}
+
+/**
+ * 刷新轮次数据
+ */
+async function refreshRoundData() {
+    if (!burnPoolContract) await initContracts();
+    
+    try {
+        const roundId = await burnPoolContract.roundId();
+        
+        if (roundId > 0) {
+            const currentRoundInfo = await burnPoolContract.getCurrentRoundInfo();
+            updateRoundUI(currentRoundInfo);
+        } else {
+            resetRoundUI();
+        }
+        
+        // 更新按钮状态
+        updateActionButtons();
+        
+    } catch (e) {
+        console.error('刷新轮次数据失败:', e);
+    }
+}
+
+// ==================== UI 更新函数 ====================
+
+function updateUserUI(data) {
+    const { userBalance, burnWeight, tickets, pendingDiv, totalClaimed } = data;
+    
+    // 代币余额
+    const userBalanceEl = document.getElementById('userBalance');
+    if (userBalanceEl) userBalanceEl.innerText = formatAmount(userBalance, tokenDecimals);
+    
+    // 燃烧积分/权重
+    const burnPointsEl = document.getElementById('burnPoints');
+    if (burnPointsEl) burnPointsEl.innerText = formatAmount(burnWeight, tokenDecimals);
+    
+    const burnWeightEl = document.getElementById('burnWeight');
+    if (burnWeightEl) burnWeightEl.innerText = formatAmount(burnWeight, tokenDecimals);
+    
+    const totalBurnedEl = document.getElementById('totalBurned');
+    if (totalBurnedEl) totalBurnedEl.innerText = formatAmount(burnWeight, tokenDecimals) + ' AI币';
+    
+    // 彩票数量
+    const myTicketCountEl = document.getElementById('myTicketCount');
+    if (myTicketCountEl) myTicketCountEl.innerText = tickets.toString();
+    
+    // 分红相关 - 全部显示为 WBNB
+    const claimableAmountEl = document.getElementById('claimableAmount');
+    if (claimableAmountEl) claimableAmountEl.innerText = formatAmount(pendingDiv, 18, 6) + ' WBNB';
+    
+    const totalDividendEl = document.getElementById('totalDividend');
+    if (totalDividendEl) totalDividendEl.innerText = formatAmount(totalClaimed, 18, 6) + ' WBNB';
+    
+    // 每日分红估算
+    updateDailyDividendEstimate(burnWeight);
+}
+
+function clearUserUI() {
+    const elements = ['userBalance', 'burnPoints', 'burnWeight', 'totalBurned', 'myTicketCount'];
+    elements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = '0';
+    });
+    
+    const claimableAmountEl = document.getElementById('claimableAmount');
+    if (claimableAmountEl) claimableAmountEl.innerText = '0 WBNB';
+    
+    const totalDividendEl = document.getElementById('totalDividend');
+    if (totalDividendEl) totalDividendEl.innerText = '0 WBNB';
+}
+
+function updateRoundUI(roundInfo) {
+    // 当前轮次
+    const currentRoundEl = document.getElementById('currentRound');
+    if (currentRoundEl) currentRoundEl.innerText = roundInfo.roundId;
+    
+    // 奖池金额（AI币）
+    const jackpotAmountEl = document.getElementById('jackpotAmount');
+    if (jackpotAmountEl) jackpotAmountEl.innerText = formatAmount(roundInfo.prizePool, tokenDecimals) + ' AI币';
+    
+    const roundPoolDisplayEl = document.getElementById('roundPoolDisplay');
+    if (roundPoolDisplayEl) roundPoolDisplayEl.innerText = formatAmount(roundInfo.prizePool, tokenDecimals) + ' AI币';
+    
+    // 总票数/参与人数
+    const totalTicketsDisplayEl = document.getElementById('totalTicketsDisplay');
+    if (totalTicketsDisplayEl) totalTicketsDisplayEl.innerText = roundInfo.totalTickets.toString();
+    
+    const participantCountEl = document.getElementById('participantCount');
+    if (participantCountEl) participantCountEl.innerText = roundInfo.totalTickets.toString();
+    
+    // 状态显示
+    const roundStatusEl = document.getElementById('roundStatus');
+    if (roundStatusEl) {
+        if (roundInfo.drawn) {
+            roundStatusEl.innerText = '已开奖';
+            roundStatusEl.className = 'round-status-badge status-drawn';
+        } else if (Date.now() / 1000 >= roundInfo.endTime) {
+            roundStatusEl.innerText = '可开奖';
+            roundStatusEl.className = 'round-status-badge status-pending';
+        } else {
+            roundStatusEl.innerText = '进行中';
+            roundStatusEl.className = 'round-status-badge status-active';
+        }
+    }
+    
+    // 倒计时
+    updateCountdown(roundInfo.endTime, roundInfo.drawn);
+}
+
+function resetRoundUI() {
+    const elements = {
+        'currentRound': '0',
+        'jackpotAmount': '0 AI币',
+        'roundPoolDisplay': '0 AI币',
+        'totalTicketsDisplay': '0',
+        'participantCount': '0'
+    };
+    
+    Object.entries(elements).forEach(([id, text]) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+    });
+}
+
+function updateActionButtons() {
+    // 购买按钮
+    const buyBtn = document.getElementById('buyBtn');
+    if (buyBtn) {
+        if (!isConnected) {
+            buyBtn.disabled = true;
+            buyBtn.innerText = '请先连接钱包';
+        } else {
+            buyBtn.disabled = false;
+            buyBtn.innerText = '确认购买';
+        }
+    }
+    
+    // 燃烧按钮
+    const burnButton = document.getElementById('burnButton');
+    if (burnButton) burnButton.disabled = !isConnected;
+    
+    // 领取按钮
+    const claimButton = document.getElementById('claimButton');
+    if (claimButton) claimButton.disabled = !isConnected;
+}
+
+// ==================== 业务逻辑函数 ====================
+
+/**
+ * 获取累计分红（通过查询事件）
+ */
+async function getTotalClaimedDividend(userAddress) {
+    if (!burnPoolContract || !userAddress) return ethers.BigNumber.from(0);
+    
+    try {
+        const filter = burnPoolContract.filters.DividendClaimed(userAddress);
+        const events = await burnPoolContract.queryFilter(filter, 0, 'latest');
+        
         let total = ethers.BigNumber.from(0);
         events.forEach(event => {
             total = total.add(event.args.wbnbAmount);
@@ -332,17 +680,22 @@ async function getTotalClaimedDividend(userAddress) {
     }
 }
 
-// 估算每日分红
+/**
+ * 估算每日分红
+ */
 async function estimateDailyDividend(userBurnWeight) {
-    if (!contract || !userBurnWeight || userBurnWeight.eq(0)) return '0';
+    if (!burnPoolContract || !userBurnWeight || userBurnWeight.eq(0)) return '0';
+    
     try {
-        const totalWeight = await contract.totalBurnWeight();
+        const [totalWeight, pendingTax] = await Promise.all([
+            burnPoolContract.totalBurnWeight(),
+            burnPoolContract.pendingTax()
+        ]);
+        
         if (totalWeight.eq(0)) return '0';
         
-        // 获取当前pendingTax作为参考
-        const pendingTax = await contract.pendingTax();
         // 简化估算：假设每天产生类似的税收
-        const dailyTax = pendingTax.mul(2); // 粗略估计
+        const dailyTax = pendingTax.mul(2);
         const userShare = dailyTax.mul(userBurnWeight).div(totalWeight);
         
         return formatAmount(userShare, 18, 6);
@@ -351,7 +704,20 @@ async function estimateDailyDividend(userBurnWeight) {
     }
 }
 
-// 倒计时
+/**
+ * 更新每日分红估算显示
+ */
+async function updateDailyDividendEstimate(burnWeight) {
+    const dailyDividendEl = document.getElementById('dailyDividend');
+    if (!dailyDividendEl) return;
+    
+    const estimate = await estimateDailyDividend(burnWeight);
+    dailyDividendEl.innerText = estimate + ' WBNB';
+}
+
+/**
+ * 更新倒计时
+ */
 function updateCountdown(endTime, drawn) {
     const countdownEl = document.getElementById('countdown');
     const drawStatus = document.getElementById('drawStatus');
@@ -394,63 +760,49 @@ function updateCountdown(endTime, drawn) {
     }
 }
 
-// 更新购买按钮状态
-function updateBuyButton() {
-    const buyBtn = document.getElementById('buyBtn');
-    if (!buyBtn) return;
-    
-    if (!isConnected) {
-        buyBtn.disabled = true;
-        buyBtn.innerText = '请先连接钱包';
-        return;
-    }
-    
-    const roundIdEl = document.getElementById('currentRound');
-    const roundId = roundIdEl ? parseInt(roundIdEl.innerText) : 0;
-    
-    if (roundId === 0) {
-        buyBtn.disabled = true;
-        buyBtn.innerText = '等待启动';
-        return;
-    }
-    
-    buyBtn.disabled = false;
-    buyBtn.innerText = '确认购买';
-}
+// ==================== 合约交互函数 ====================
 
-// ==================== 购买彩票 ====================
+/**
+ * 购买彩票
+ */
 async function buyTickets(ticketCount) {
     if (!isConnected) {
         showToast('请先连接钱包');
         return;
     }
     
-    const amount = ticketCount * 100;
+    const amount = ticketCount * 100; // 100代币/张
     const amountWei = parseAmount(amount.toString(), tokenDecimals);
 
     try {
         // 检查授权
-        const allowance = await tokenContract.allowance(currentAccount, CONFIG.contractAddress);
+        const allowance = await tokenContract.allowance(currentAccount, CONFIG.burnPoolAddress);
+        
         if (allowance.lt(amountWei)) {
             showToast('正在授权代币...', 2000);
-            const txApprove = await tokenContract.approve(CONFIG.contractAddress, ethers.constants.MaxUint256);
+            const txApprove = await tokenContract.approve(CONFIG.burnPoolAddress, ethers.constants.MaxUint256);
             await txApprove.wait();
             showToast('授权成功', 2000);
         }
 
-        const tx = await contract.buyTicket(amountWei);
+        // 购买彩票
+        const tx = await burnPoolContract.buyTicket(amountWei);
         showToast('交易已发送，等待确认...', 3000);
         await tx.wait();
+        
         showToast('购买成功！');
-        refreshData();
-        loadRoundHistory();
+        await refreshAllData();
+        await loadRoundHistory();
+        
     } catch (e) {
-        console.error(e);
+        console.error('购买失败:', e);
         showToast('购买失败: ' + (e.reason || e.message));
     }
 }
 
-// ==================== 燃烧代币 ====================
+/**
+ * 燃烧代币
+ */
 async function burnTokens(amountStr) {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -458,7 +810,7 @@ async function burnTokens(amountStr) {
     }
     
     const amount = parseFloat(amountStr);
-    if (amount <= 0) {
+    if (isNaN(amount) || amount <= 0) {
         showToast('请输入有效数量');
         return;
     }
@@ -467,25 +819,33 @@ async function burnTokens(amountStr) {
 
     try {
         // 检查授权
-        const allowance = await tokenContract.allowance(currentAccount, CONFIG.contractAddress);
+        const allowance = await tokenContract.allowance(currentAccount, CONFIG.burnPoolAddress);
+        
         if (allowance.lt(amountWei)) {
             showToast('正在授权代币...', 2000);
-            const txApprove = await tokenContract.approve(CONFIG.contractAddress, ethers.constants.MaxUint256);
+            const txApprove = await tokenContract.approve(CONFIG.burnPoolAddress, ethers.constants.MaxUint256);
             await txApprove.wait();
+            showToast('授权成功', 2000);
         }
 
-        const tx = await contract.burnForDividend(amountWei);
+        // 执行燃烧
+        const tx = await burnPoolContract.burnForDividend(amountWei);
         showToast('燃烧交易已发送...');
         await tx.wait();
-        showToast('燃烧成功！');
-        refreshData();
-        loadBurnRank(); // 刷新排行
+        
+        showToast('燃烧成功！获得分红权重');
+        await refreshAllData();
+        await loadBurnRank();
+        
     } catch (e) {
+        console.error('燃烧失败:', e);
         showToast('燃烧失败: ' + (e.reason || e.message));
     }
 }
 
-// ==================== 领取分红 ====================
+/**
+ * 领取分红
+ */
 async function claimDividend() {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -493,23 +853,29 @@ async function claimDividend() {
     }
     
     try {
-        const pendingDiv = await contract.pendingDividend(currentAccount);
+        const pendingDiv = await burnPoolContract.pendingDividend(currentAccount);
+        
         if (pendingDiv.eq(0)) {
             showToast('没有可领取的分红');
             return;
         }
         
-        const tx = await contract.claimTaxDividend();
+        const tx = await burnPoolContract.claimTaxDividend();
         showToast('领取交易已发送...');
         await tx.wait();
+        
         showToast('领取成功！');
-        refreshData();
+        await refreshAllData();
+        
     } catch (e) {
+        console.error('领取失败:', e);
         showToast('领取失败: ' + (e.reason || e.message));
     }
 }
 
-// ==================== 开奖 ====================
+/**
+ * 开奖
+ */
 async function drawRound(roundId) {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -517,18 +883,23 @@ async function drawRound(roundId) {
     }
     
     try {
-        const tx = await contract.drawRound(roundId);
+        const tx = await burnPoolContract.drawRound(roundId);
         showToast('开奖交易已发送...');
         await tx.wait();
+        
         showToast('开奖成功！');
-        refreshData();
-        loadRoundHistory();
+        await refreshAllData();
+        await loadRoundHistory();
+        
     } catch (e) {
+        console.error('开奖失败:', e);
         showToast('开奖失败: ' + (e.reason || e.message));
     }
 }
 
-// ==================== 领取单个轮次奖金 ====================
+/**
+ * 领取单个轮次奖金
+ */
 async function claimPrize(roundId) {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -536,18 +907,23 @@ async function claimPrize(roundId) {
     }
     
     try {
-        const tx = await contract.claimPrize(roundId);
+        const tx = await burnPoolContract.claimPrize(roundId);
         showToast('领取交易已发送...');
         await tx.wait();
+        
         showToast('领取成功！');
-        refreshData();
-        loadRoundHistory();
+        await refreshAllData();
+        await loadRoundHistory();
+        
     } catch (e) {
+        console.error('领取失败:', e);
         showToast('领取失败: ' + (e.reason || e.message));
     }
 }
 
-// ==================== 一键领取所有奖金 ====================
+/**
+ * 一键领取所有奖金
+ */
 async function claimAllPrizes() {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -565,7 +941,7 @@ async function claimAllPrizes() {
     let successCount = 0;
     for (let r of unclaimedRounds) {
         try {
-            const tx = await contract.claimPrize(r.roundId);
+            const tx = await burnPoolContract.claimPrize(r.roundId);
             await tx.wait();
             successCount++;
         } catch (e) {
@@ -574,13 +950,17 @@ async function claimAllPrizes() {
     }
     
     showToast(`成功领取 ${successCount} 个轮次！`);
-    refreshData();
-    loadRoundHistory();
+    await refreshAllData();
+    await loadRoundHistory();
 }
 
-// ==================== 加载历史开奖记录 ====================
+// ==================== 数据加载函数 ====================
+
+/**
+ * 加载历史开奖记录
+ */
 async function loadRoundHistory() {
-    if (!contract) await initContract();
+    if (!burnPoolContract) await initContracts();
     
     const historyDiv = document.getElementById('historyList');
     const claimAllBtn = document.getElementById('claimAllBtn');
@@ -588,7 +968,7 @@ async function loadRoundHistory() {
     if (!historyDiv) return;
 
     try {
-        const roundId = await contract.roundId();
+        const roundId = await burnPoolContract.roundId();
         if (roundId === 0) {
             historyDiv.innerHTML = '<div class="empty-history">暂无历史记录</div>';
             if (claimAllBtn) claimAllBtn.style.display = 'none';
@@ -604,19 +984,22 @@ async function loadRoundHistory() {
         
         for (let i = roundId; i >= start; i--) {
             try {
-                const info = await contract.getRoundInfo(i);
-                const drawn = info.drawn;
+                const info = await burnPoolContract.getRoundInfo(i);
+                
+                if (!info.drawn) continue; // 只显示已开奖的轮次
+                
                 const winners = info.winners;
                 const prizePool = info.prizePool;
 
                 let userWon = false;
                 let userUnclaimedCount = 0;
 
-                if (currentAccount && drawn) {
+                if (currentAccount) {
                     try {
-                        const userInfo = await contract.getUserPrizeInfo(i, currentAccount);
+                        const userInfo = await burnPoolContract.getUserPrizeInfo(i, currentAccount);
                         userWon = userInfo.totalWon.gt(0);
                         userUnclaimedCount = userInfo.unclaimedCount;
+                        
                         if (userUnclaimedCount > 0) {
                             hasUnclaimed = true;
                             userRounds.push({
@@ -627,28 +1010,27 @@ async function loadRoundHistory() {
                     } catch (e) {}
                 }
 
-                if (drawn) {
-                    const winnersText = winners.length > 0 
-                        ? `${winners.length}位中奖者` 
-                        : '无人中奖';
-                    
-                    const itemClass = userWon ? 'history-item won' : 'history-item';
-                    
-                    html += `
-                    <div class="${itemClass}">
-                        <div class="round-info">
-                            <div class="round-id">第 ${i} 期 ${userWon ? '<span class="winner-badge">中奖</span>' : ''}</div>
-                            <div class="round-pool">奖池: ${formatAmount(prizePool, tokenDecimals)} AI币</div>
-                        </div>
-                        <div class="round-detail">
-                            <div>${winnersText}</div>
-                            ${userWon && userUnclaimedCount > 0 
-                                ? `<button class="claim-btn-small can-claim" onclick="ContractAPI.claimPrize(${i})">领取</button>`
-                                : userWon ? '<span style="color:#00b894;">已领</span>' : ''
-                            }
-                        </div>
-                    </div>`;
-                }
+                const winnersText = winners.length > 0 
+                    ? `${winners.length}位中奖者` 
+                    : '无人中奖';
+                
+                const itemClass = userWon ? 'history-item won' : 'history-item';
+                
+                html += `
+                <div class="${itemClass}">
+                    <div class="round-info">
+                        <div class="round-id">第 ${i} 期 ${userWon ? '<span class="winner-badge">中奖</span>' : ''}</div>
+                        <div class="round-pool">奖池: ${formatAmount(prizePool, tokenDecimals)} AI币</div>
+                    </div>
+                    <div class="round-detail">
+                        <div>${winnersText}</div>
+                        ${userWon && userUnclaimedCount > 0 
+                            ? `<button class="claim-btn-small can-claim" onclick="ContractAPI.claimPrize(${i})">领取</button>`
+                            : userWon ? '<span style="color:#00b894;">已领</span>' : ''
+                        }
+                    </div>
+                </div>`;
+                
             } catch (e) {
                 console.error(`加载轮次 ${i} 失败`, e);
             }
@@ -667,17 +1049,19 @@ async function loadRoundHistory() {
     }
 }
 
-// ==================== 加载燃烧排行 ====================
+/**
+ * 加载燃烧排行（替代彩票排行）
+ */
 async function loadBurnRank() {
-    if (!contract) await initContract();
+    if (!burnPoolContract) await initContracts();
     
     const rankList = document.getElementById('rankList');
     if (!rankList) return;
 
     try {
         // 通过Burn事件获取燃烧数据
-        const filter = contract.filters.Burn();
-        const events = await contract.queryFilter(filter, 0, 'latest');
+        const filter = burnPoolContract.filters.Burn();
+        const events = await burnPoolContract.queryFilter(filter, 0, 'latest');
         
         // 统计每个地址的燃烧量
         const burnMap = new Map();
@@ -734,16 +1118,21 @@ async function loadBurnRank() {
     }
 }
 
-// ==================== 更新中奖概率 ====================
+/**
+ * 更新中奖概率
+ */
 async function updateWinChance() {
-    if (!currentAccount || !contract) return;
+    if (!currentAccount || !burnPoolContract) return;
     
     try {
-        const tickets = await contract.tickets(currentAccount);
-        const currentRoundInfo = await contract.getCurrentRoundInfo();
-        const totalTickets = currentRoundInfo.totalTickets;
+        const [tickets, currentRoundInfo] = await Promise.all([
+            burnPoolContract.tickets(currentAccount),
+            burnPoolContract.getCurrentRoundInfo()
+        ]);
         
+        const totalTickets = currentRoundInfo.totalTickets;
         const winChanceEl = document.getElementById('winChance');
+        
         if (!winChanceEl) return;
         
         if (totalTickets > 0) {
@@ -757,59 +1146,81 @@ async function updateWinChance() {
     }
 }
 
-// ==================== 更新每日分红估算 ====================
+/**
+ * 更新每日分红估算（输入变化时）
+ */
 async function updateDailyDividend(burnAmount) {
     const dailyDividendEl = document.getElementById('dailyDividend');
-    if (!dailyDividendEl || !contract) return;
+    if (!dailyDividendEl || !burnPoolContract) return;
     
     try {
         const amount = parseFloat(burnAmount) || 0;
         if (amount === 0) {
-            dailyDividendEl.innerText = '0';
+            dailyDividendEl.innerText = '0 WBNB';
             return;
         }
         
         const amountWei = parseAmount(amount.toString(), tokenDecimals);
-        const daily = await estimateDailyDividend(amountWei);
-        dailyDividendEl.innerText = daily;
+        const estimate = await estimateDailyDividend(amountWei);
+        dailyDividendEl.innerText = estimate + ' WBNB';
     } catch (e) {
-        dailyDividendEl.innerText = '0';
+        dailyDividendEl.innerText = '0 WBNB';
     }
 }
 
-// ==================== 导出API ====================
+// ==================== 导出 API ====================
+
 window.ContractAPI = {
+    // 钱包
     connectWallet,
-    refreshData,
+    disconnectWallet,
+    
+    // 数据刷新
+    refreshData: refreshAllData,
+    
+    // 合约交互
     buyTickets,
     burnTokens,
     claimDividend,
     drawRound,
     claimPrize,
     claimAllPrizes,
+    
+    // 数据加载
     loadRoundHistory,
     loadBurnRank,
+    
+    // 工具
     updateWinChance,
     updateDailyDividend,
-    getContract: () => contract
+    
+    // 获取合约实例（供外部使用）
+    getBurnPoolContract: () => burnPoolContract,
+    getTokenContract: () => tokenContract,
+    getProvider: () => provider,
+    getSigner: () => signer,
+    getCurrentAccount: () => currentAccount,
+    isWalletConnected: () => isConnected
 };
 
-// 初始化
-initContract().then(() => {
-    refreshData();
-    loadRoundHistory();
-    
-    // 启动定时刷新
-    setInterval(() => {
-        if (document.getElementById('homePage')?.classList.contains('active')) {
-            refreshData();
-        }
-    }, 30000); // 30秒刷新一次
-});
+// ==================== 初始化 ====================
 
-// 监听网络变化
-if (window.ethereum) {
-    window.ethereum.on('chainChanged', () => {
-        window.location.reload();
-    });
-}
+// 页面加载时自动初始化
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        await initContracts();
+        await refreshAllData();
+        await loadRoundHistory();
+        
+        // 启动定时刷新（30秒）
+        setInterval(() => {
+            const homePage = document.getElementById('homePage');
+            if (homePage?.classList.contains('active')) {
+                refreshAllData();
+            }
+        }, 30000);
+        
+    } catch (e) {
+        console.error('初始化失败:', e);
+    }
+});
