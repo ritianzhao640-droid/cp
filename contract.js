@@ -3,10 +3,10 @@
 
 // ==================== 配置 ====================
 const CONFIG = {
-    // 销毁分红合约地址（接收3%税收、处理燃烧、分红、彩票逻辑）
+    // 销毁分红合约地址（彩票、燃烧、分红逻辑）
     burnPoolAddress: '0x07bA400b488fa4F3dBeDA52d5f1842a8EB67cA25',
     
-    // 代币合约地址（AI币）
+    // 代币合约地址（AI币，标准ERC20）
     tokenAddress: '0x5437ccc083f121c5d1994d83f4f32a9cd2c57777',
     
     // WBNB地址（BSC主网）
@@ -21,216 +21,88 @@ const CONFIG = {
 
 // ==================== ABI 定义 ====================
 
-// ---------- 1. 销毁分红合约 ABI (BurnPool Contract) ----------
+// ---------- 1. 销毁分红合约 ABI (BurnPool/Lottery Contract) ----------
+// 注意：这个 ABI 需要根据你的实际合约替换
+// 以下是基于你之前描述的完整功能 ABI
 const BURN_POOL_ABI = [
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "owner",
-				"type": "address"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "spender",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "value",
-				"type": "uint256"
-			}
-		],
-		"name": "Approval",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "from",
-				"type": "address"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "value",
-				"type": "uint256"
-			}
-		],
-		"name": "Transfer",
-		"type": "event"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "owner",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "spender",
-				"type": "address"
-			}
-		],
-		"name": "allowance",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "spender",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "value",
-				"type": "uint256"
-			}
-		],
-		"name": "approve",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "account",
-				"type": "address"
-			}
-		],
-		"name": "balanceOf",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "deposit",
-		"outputs": [],
-		"stateMutability": "payable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "totalSupply",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "value",
-				"type": "uint256"
-			}
-		],
-		"name": "transfer",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "from",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "value",
-				"type": "uint256"
-			}
-		],
-		"name": "transferFrom",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "withdraw",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	}
-]
+    // ===== 视图函数 =====
+    
+    // 基础信息
+    "function token() view returns (address)",
+    "function wbnb() view returns (address)",
+    "function tokenSet() view returns (bool)",
+    
+    // 燃烧分红相关
+    "function burnWeight(address user) view returns (uint256)",
+    "function totalBurnWeight() view returns (uint256)",
+    "function pendingTax() view returns (uint256)",
+    "function accTaxPerShare() view returns (uint256)",
+    "function userAccTaxPerShare(address user) view returns (uint256)",
+    "function unclaimedDividend(address user) view returns (uint256)",
+    "function pendingDividend(address user) view returns (uint256)",
+    "function getWBNBBalance() view returns (uint256)",
+    
+    // 彩票轮次相关
+    "function roundId() view returns (uint256)",
+    "function totalStaked() view returns (uint256)",
+    "function tickets(address user) view returns (uint256)",
+    "function prizeReleaseRate() view returns (uint256)",
+    "function totalUnclaimedPrizes() view returns (uint256)",
+    
+    // 轮次信息
+    "function getCurrentRoundInfo() view returns (uint256 roundId, uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, bool drawn, uint256 timeRemaining, bool canDraw)",
+    "function getRoundInfo(uint256 _roundId) view returns (uint256 startTime, uint256 endTime, uint256 prizePool, uint256 totalTickets, bool drawn, address[] memory winners, uint256[] memory winnerShares)",
+    "function getUserPrizeInfo(uint256 _roundId, address user) view returns (uint256 totalWon, uint256 claimedCount, uint256 unclaimedCount, uint256 unclaimedAmount)",
+    
+    // ===== 写函数 =====
+    
+    // 管理
+    "function setToken(address _token) external",
+    
+    // 燃烧分红
+    "function burnForDividend(uint256 amount) external",
+    "function claimTaxDividend() external",
+    
+    // 彩票
+    "function buyTicket(uint256 amount) external",
+    "function drawRound(uint256 _roundId) external",
+    "function claimPrize(uint256 _roundId) external",
+    
+    // ===== 事件 =====
+    "event TokenSet(address indexed token, address indexed wbnb)",
+    "event Burn(address indexed user, uint256 amount, uint256 cachedDividend)",
+    "event DividendClaimed(address indexed user, uint256 wbnbAmount)",
+    "event DividendCached(address indexed user, uint256 amount)",
+    "event TaxReceived(uint256 bnbAmount)",
+    "event TicketBought(address indexed user, uint256 amount, uint256 roundId)",
+    "event NewRound(uint256 indexed roundId, uint256 prizePool, uint256 startTime, uint256 endTime)",
+    "event RoundDrawn(uint256 indexed roundId, address[] winners, uint256[] shares, uint256 randomSeed)",
+    "event PrizeClaimed(address indexed user, uint256 indexed roundId, uint256 amount, uint256 claimCount)"
+];
 
-// ---------- 2. 代币合约 ABI (Token Contract) ----------
+// ---------- 2. 代币合约 ABI (Standard ERC20 Token) ----------
+// 标准 ERC20 + 常见扩展功能
 const TOKEN_ABI = [
-   [{"输入":[{"组件":[{"内部类型":"地址","名称":"PCS_V2_FACTORY","类型":"地址"},{"内部类型":"bytes32","名称":"PCS_V2_CODE_HASH","类型":"bytes32"},{"内部类型":"地址","名称":"PCS_V2_ROUTER","类型":"地址"},{"内部类型":"地址","名称":"PCS_SMART_ROUTER","t类型":"地址"},{"内部类型":"地址","名称":"WETH","类型":"地址"},{"内部类型":"地址","名称":"PCS_V3_FACTORY","类型":"地址"},{"内部类型":"bytes32","名称":"PCS_V3_CODE_HASH","类型":"bytes32"},{"内部类型":"地址","名称":"UNI_V2_FACTORY","类型":"地址"},{"内部类型":"内部类型":"地址"} {"internalType":"bytes32","name":"UNI_V2_CODE_HASH","type":"bytes32"},{"internalType":"address","name":"UNI_V3_FACTORY","type":"address"},{"internalType":"bytes32","name":"UNI_V3_CODE_HASH","type":"bytes32"},{"internalType":"address","name":"PCS_V4_VAULT","type":"address"},{"internalType":"ad"连衣裙","名称":"UNI_V4_POOL","类型":"地址"},{"内部类型":"uint256","名称":"MIN_LIQ_THRESHOLD","类型":"uint256"},{"内部类型":"uint256","名称":"START_LIQ_THRESHOLD","类型":"uint256"},{"内部类型":"uint256","名称":"ANTI_FARMER_DURATION","类型":"uint256"}],"内部类型":"结构体FlapTaxToken.ConstructorParams","name":"params","type":"tuple"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[],"name":"EIP712DomainChanged", type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"quoteToken","type":"address"},{"indexed":false,"internalType":"uint256","name":"taxAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"outputAmount","type":"uint256"}],"name":"FlapTaxLiquidationSuccess","type":"event"},{"anonymous":false,"inputs":[{"ind exed":false,"internalType":"uint8","name":"version","type":"uint8"}],"name":"Initialized","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"intern alType":"uint8","name":"fromState","type":"uint8"},{"indexed":false,"internalType":"uint8","name":"toState","type":"uint8"}],"name":"PoolStateChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes","name":"reason","type":"bytes"}],"name":"TaxLiquidationError","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"fr om","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"from","type":"address"},{"indexed":false,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"TransferFlapToken","type":"event"},{"inputs":[],"name":"ANTI_FARMER_DURATION","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"DOMAIN_SEPARATOR","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view ","type":"function"},{"inputs":[],"name":"MIN_LIQ_THRESHOLD","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"QUOTE_TOKEN","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"START_LIQ_THRESHOLD","outputs":[{"internalType": "uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"TAX_DURATION","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","out puts":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"antiFarmerExpirationTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"decimals","outputs" :[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"subtractedValue","type":"uint256"}],"name":"decreaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inpu ts":[],"name":"eip712Domain","outputs":[{"internalType":"bytes1","name":"fields","type":"bytes1"},{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"version","type":"string"},{"internalType":"uint256","name":"chainId","type":"uint256"},{"internalType":"address","name":"verifyingContract","type":"address"},{"internalType":"bytes32","name":"sa lt","type":"bytes32"},{"internalType":"uint256[]","name":"extensions","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"finalizeMigration","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"addedValue","type":"uint256"}],"name":"increaseAllowance",outputs":[{"internalType":"bool",name":"",type":"bool"}],"stateMutability":"nonpayable",type":"function"},{"inputs":[{"components":[{"internalType":"string",name":"name",type":"string"},{"internalType":"string",name":"symbol",type":"string"},{"internalType":"string",name":"meta",type":"string"},{"internalT类型":"uint16","名称":"税","类型":"uint16"},{"内部类型":"地址","名称":"税分割器","类型":"地址"},{"内部类型":"地址","名称":"报价令牌","类型":"地址"},{"内部类型":"uint256","名称":"liq预期输出金额","类型":"uint256"},{"内部类型":"uint256","名称":"税时长","类型":"uint256"}],"内部类型":"结构体{{"IFlapTaxToken.InitParams", name":"params", type":"tuple"}]", name":"initialize", outputs":[]", stateMutability":"nonpayable", type":"function"},{"inputs":[]", name":"liqExpectedOutputAmount", outputs":[{"internalType":"uint256", name":""", type":"uint256"}]", stateMutability":"view", type":"function"},{"inputs":[]", name":"liquidationThreshold", outputs":[{"internalType":"uint256", name":""", type":"uint256"}]", stateMutability":"view", type":"function"} e":"function"},{"inputs":[],"name":"mainPool","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"metaURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"nonces","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name": "owner",outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"uint256","name":"deadline"," type":"uint256"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"permit","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"pools","outputs":[{"i nternalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"startMigration","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"state","outputs":[{"internalType":"enum FlapTaxToken.PoolState","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxExpirationTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxRate","outputs":[{"internalType":"uint16","name":"" ,"type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxSplitter","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{ "internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"addr ess"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxExpirationTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxRate","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"fu nction"},{"inputs":[],"name":"taxSplitter","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to" ,"type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalTy pe":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxExpirationTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxRate","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"fu nction"},{"inputs":[],"name":"taxSplitter","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to" ,"type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalTy pe":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxRate","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxSplitter","outputs":[{"internalType":"address","name":"","type":"a ddress"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type ":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","ty pe":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxRate","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"taxSplitter","outputs":[{"internalType":"address","name":"","type":"a ddress"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type ":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","ty pe":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}][{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"fu nction"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}][{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"fu nction"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]
+    // ===== ERC20 标准 =====
+    "function name() view returns (string)",
+    "function symbol() view returns (string)",
+    "function decimals() view returns (uint8)",
+    "function totalSupply() view returns (uint256)",
+    "function balanceOf(address account) view returns (uint256)",
+    "function transfer(address to, uint256 amount) returns (bool)",
+    "function allowance(address owner, address spender) view returns (uint256)",
+    "function approve(address spender, uint256 amount) returns (bool)",
+    "function transferFrom(address from, address to, uint256 amount) returns (bool)",
+    
+    // ===== 事件 =====
+    "event Transfer(address indexed from, address indexed to, uint256 value)",
+    "event Approval(address indexed owner, address indexed spender, uint256 value)",
+    
+    // ===== 常见扩展（可选）=====
+    // 如果你的代币有燃烧功能，取消注释下面两行：
+    // "function burn(uint256 amount) external",
+    // "function burnFrom(address account, uint256 amount) external"
+];
 
 // ==================== 状态管理 ====================
 let provider, signer;
@@ -457,13 +329,11 @@ async function refreshUserData() {
     if (!burnPoolContract || !tokenContract) await initContracts();
     
     if (!currentAccount) {
-        // 未连接时清空用户数据
         clearUserUI();
         return;
     }
 
     try {
-        // 并行获取用户数据
         const [
             userBalance,
             burnWeight,
@@ -478,7 +348,6 @@ async function refreshUserData() {
             getTotalClaimedDividend(currentAccount)
         ]);
 
-        // 更新UI
         updateUserUI({
             userBalance,
             burnWeight,
@@ -501,7 +370,6 @@ async function refreshPoolData() {
     try {
         const wbnbBalance = await burnPoolContract.getWBNBBalance();
         
-        // 更新分红池显示
         const dividendPoolEl = document.getElementById('dividendPool');
         if (dividendPoolEl) {
             dividendPoolEl.innerText = formatAmount(wbnbBalance, 18, 4) + ' WBNB';
@@ -527,7 +395,6 @@ async function refreshRoundData() {
             resetRoundUI();
         }
         
-        // 更新按钮状态
         updateActionButtons();
         
     } catch (e) {
@@ -540,11 +407,9 @@ async function refreshRoundData() {
 function updateUserUI(data) {
     const { userBalance, burnWeight, tickets, pendingDiv, totalClaimed } = data;
     
-    // 代币余额
     const userBalanceEl = document.getElementById('userBalance');
     if (userBalanceEl) userBalanceEl.innerText = formatAmount(userBalance, tokenDecimals);
     
-    // 燃烧积分/权重
     const burnPointsEl = document.getElementById('burnPoints');
     if (burnPointsEl) burnPointsEl.innerText = formatAmount(burnWeight, tokenDecimals);
     
@@ -554,18 +419,15 @@ function updateUserUI(data) {
     const totalBurnedEl = document.getElementById('totalBurned');
     if (totalBurnedEl) totalBurnedEl.innerText = formatAmount(burnWeight, tokenDecimals) + ' AI币';
     
-    // 彩票数量
     const myTicketCountEl = document.getElementById('myTicketCount');
     if (myTicketCountEl) myTicketCountEl.innerText = tickets.toString();
     
-    // 分红相关 - 全部显示为 WBNB
     const claimableAmountEl = document.getElementById('claimableAmount');
     if (claimableAmountEl) claimableAmountEl.innerText = formatAmount(pendingDiv, 18, 6) + ' WBNB';
     
     const totalDividendEl = document.getElementById('totalDividend');
     if (totalDividendEl) totalDividendEl.innerText = formatAmount(totalClaimed, 18, 6) + ' WBNB';
     
-    // 每日分红估算
     updateDailyDividendEstimate(burnWeight);
 }
 
@@ -584,25 +446,21 @@ function clearUserUI() {
 }
 
 function updateRoundUI(roundInfo) {
-    // 当前轮次
     const currentRoundEl = document.getElementById('currentRound');
     if (currentRoundEl) currentRoundEl.innerText = roundInfo.roundId;
     
-    // 奖池金额（AI币）
     const jackpotAmountEl = document.getElementById('jackpotAmount');
     if (jackpotAmountEl) jackpotAmountEl.innerText = formatAmount(roundInfo.prizePool, tokenDecimals) + ' AI币';
     
     const roundPoolDisplayEl = document.getElementById('roundPoolDisplay');
     if (roundPoolDisplayEl) roundPoolDisplayEl.innerText = formatAmount(roundInfo.prizePool, tokenDecimals) + ' AI币';
     
-    // 总票数/参与人数
     const totalTicketsDisplayEl = document.getElementById('totalTicketsDisplay');
     if (totalTicketsDisplayEl) totalTicketsDisplayEl.innerText = roundInfo.totalTickets.toString();
     
     const participantCountEl = document.getElementById('participantCount');
     if (participantCountEl) participantCountEl.innerText = roundInfo.totalTickets.toString();
     
-    // 状态显示
     const roundStatusEl = document.getElementById('roundStatus');
     if (roundStatusEl) {
         if (roundInfo.drawn) {
@@ -617,7 +475,6 @@ function updateRoundUI(roundInfo) {
         }
     }
     
-    // 倒计时
     updateCountdown(roundInfo.endTime, roundInfo.drawn);
 }
 
@@ -637,7 +494,6 @@ function resetRoundUI() {
 }
 
 function updateActionButtons() {
-    // 购买按钮
     const buyBtn = document.getElementById('buyBtn');
     if (buyBtn) {
         if (!isConnected) {
@@ -649,20 +505,15 @@ function updateActionButtons() {
         }
     }
     
-    // 燃烧按钮
     const burnButton = document.getElementById('burnButton');
     if (burnButton) burnButton.disabled = !isConnected;
     
-    // 领取按钮
     const claimButton = document.getElementById('claimButton');
     if (claimButton) claimButton.disabled = !isConnected;
 }
 
 // ==================== 业务逻辑函数 ====================
 
-/**
- * 获取累计分红（通过查询事件）
- */
 async function getTotalClaimedDividend(userAddress) {
     if (!burnPoolContract || !userAddress) return ethers.BigNumber.from(0);
     
@@ -680,9 +531,6 @@ async function getTotalClaimedDividend(userAddress) {
     }
 }
 
-/**
- * 估算每日分红
- */
 async function estimateDailyDividend(userBurnWeight) {
     if (!burnPoolContract || !userBurnWeight || userBurnWeight.eq(0)) return '0';
     
@@ -694,7 +542,6 @@ async function estimateDailyDividend(userBurnWeight) {
         
         if (totalWeight.eq(0)) return '0';
         
-        // 简化估算：假设每天产生类似的税收
         const dailyTax = pendingTax.mul(2);
         const userShare = dailyTax.mul(userBurnWeight).div(totalWeight);
         
@@ -704,9 +551,6 @@ async function estimateDailyDividend(userBurnWeight) {
     }
 }
 
-/**
- * 更新每日分红估算显示
- */
 async function updateDailyDividendEstimate(burnWeight) {
     const dailyDividendEl = document.getElementById('dailyDividend');
     if (!dailyDividendEl) return;
@@ -715,9 +559,6 @@ async function updateDailyDividendEstimate(burnWeight) {
     dailyDividendEl.innerText = estimate + ' WBNB';
 }
 
-/**
- * 更新倒计时
- */
 function updateCountdown(endTime, drawn) {
     const countdownEl = document.getElementById('countdown');
     const drawStatus = document.getElementById('drawStatus');
@@ -762,20 +603,16 @@ function updateCountdown(endTime, drawn) {
 
 // ==================== 合约交互函数 ====================
 
-/**
- * 购买彩票
- */
 async function buyTickets(ticketCount) {
     if (!isConnected) {
         showToast('请先连接钱包');
         return;
     }
     
-    const amount = ticketCount * 100; // 100代币/张
+    const amount = ticketCount * 100;
     const amountWei = parseAmount(amount.toString(), tokenDecimals);
 
     try {
-        // 检查授权
         const allowance = await tokenContract.allowance(currentAccount, CONFIG.burnPoolAddress);
         
         if (allowance.lt(amountWei)) {
@@ -785,7 +622,6 @@ async function buyTickets(ticketCount) {
             showToast('授权成功', 2000);
         }
 
-        // 购买彩票
         const tx = await burnPoolContract.buyTicket(amountWei);
         showToast('交易已发送，等待确认...', 3000);
         await tx.wait();
@@ -800,9 +636,6 @@ async function buyTickets(ticketCount) {
     }
 }
 
-/**
- * 燃烧代币
- */
 async function burnTokens(amountStr) {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -818,7 +651,6 @@ async function burnTokens(amountStr) {
     const amountWei = parseAmount(amount.toString(), tokenDecimals);
 
     try {
-        // 检查授权
         const allowance = await tokenContract.allowance(currentAccount, CONFIG.burnPoolAddress);
         
         if (allowance.lt(amountWei)) {
@@ -828,7 +660,6 @@ async function burnTokens(amountStr) {
             showToast('授权成功', 2000);
         }
 
-        // 执行燃烧
         const tx = await burnPoolContract.burnForDividend(amountWei);
         showToast('燃烧交易已发送...');
         await tx.wait();
@@ -843,9 +674,6 @@ async function burnTokens(amountStr) {
     }
 }
 
-/**
- * 领取分红
- */
 async function claimDividend() {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -873,9 +701,6 @@ async function claimDividend() {
     }
 }
 
-/**
- * 开奖
- */
 async function drawRound(roundId) {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -897,9 +722,6 @@ async function drawRound(roundId) {
     }
 }
 
-/**
- * 领取单个轮次奖金
- */
 async function claimPrize(roundId) {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -921,9 +743,6 @@ async function claimPrize(roundId) {
     }
 }
 
-/**
- * 一键领取所有奖金
- */
 async function claimAllPrizes() {
     if (!isConnected) {
         showToast('请先连接钱包');
@@ -956,9 +775,6 @@ async function claimAllPrizes() {
 
 // ==================== 数据加载函数 ====================
 
-/**
- * 加载历史开奖记录
- */
 async function loadRoundHistory() {
     if (!burnPoolContract) await initContracts();
     
@@ -979,14 +795,13 @@ async function loadRoundHistory() {
         let hasUnclaimed = false;
         userRounds = [];
 
-        // 从最新轮次往前遍历（最多10轮）
         const start = roundId > 10 ? roundId - 9 : 1;
         
         for (let i = roundId; i >= start; i--) {
             try {
                 const info = await burnPoolContract.getRoundInfo(i);
                 
-                if (!info.drawn) continue; // 只显示已开奖的轮次
+                if (!info.drawn) continue;
                 
                 const winners = info.winners;
                 const prizePool = info.prizePool;
@@ -1049,9 +864,6 @@ async function loadRoundHistory() {
     }
 }
 
-/**
- * 加载燃烧排行（替代彩票排行）
- */
 async function loadBurnRank() {
     if (!burnPoolContract) await initContracts();
     
@@ -1059,11 +871,9 @@ async function loadBurnRank() {
     if (!rankList) return;
 
     try {
-        // 通过Burn事件获取燃烧数据
         const filter = burnPoolContract.filters.Burn();
         const events = await burnPoolContract.queryFilter(filter, 0, 'latest');
         
-        // 统计每个地址的燃烧量
         const burnMap = new Map();
         
         events.forEach(event => {
@@ -1077,10 +887,9 @@ async function loadBurnRank() {
             }
         });
         
-        // 转换为数组并排序
         const sortedBurns = Array.from(burnMap.entries())
             .sort((a, b) => b[1].cmp(a[1]))
-            .slice(0, 20); // 前20名
+            .slice(0, 20);
         
         burnRankData = sortedBurns;
 
@@ -1118,9 +927,6 @@ async function loadBurnRank() {
     }
 }
 
-/**
- * 更新中奖概率
- */
 async function updateWinChance() {
     if (!currentAccount || !burnPoolContract) return;
     
@@ -1146,9 +952,6 @@ async function updateWinChance() {
     }
 }
 
-/**
- * 更新每日分红估算（输入变化时）
- */
 async function updateDailyDividend(burnAmount) {
     const dailyDividendEl = document.getElementById('dailyDividend');
     if (!dailyDividendEl || !burnPoolContract) return;
@@ -1171,30 +974,19 @@ async function updateDailyDividend(burnAmount) {
 // ==================== 导出 API ====================
 
 window.ContractAPI = {
-    // 钱包
     connectWallet,
     disconnectWallet,
-    
-    // 数据刷新
     refreshData: refreshAllData,
-    
-    // 合约交互
     buyTickets,
     burnTokens,
     claimDividend,
     drawRound,
     claimPrize,
     claimAllPrizes,
-    
-    // 数据加载
     loadRoundHistory,
     loadBurnRank,
-    
-    // 工具
     updateWinChance,
     updateDailyDividend,
-    
-    // 获取合约实例（供外部使用）
     getBurnPoolContract: () => burnPoolContract,
     getTokenContract: () => tokenContract,
     getProvider: () => provider,
@@ -1205,14 +997,12 @@ window.ContractAPI = {
 
 // ==================== 初始化 ====================
 
-// 页面加载时自动初始化
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await initContracts();
         await refreshAllData();
         await loadRoundHistory();
         
-        // 启动定时刷新（30秒）
         setInterval(() => {
             const homePage = document.getElementById('homePage');
             if (homePage?.classList.contains('active')) {
