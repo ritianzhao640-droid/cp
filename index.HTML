@@ -91,6 +91,17 @@
             cursor: pointer;
         }
 
+        .disconnect-btn {
+            background: #ff7675;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-left: 4px;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -199,13 +210,25 @@
 
         .game-section {
             margin: 16px;
-            background: #2d3436;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 24px;
             padding: 32px 24px;
             text-align: center;
             color: white;
             position: relative;
             overflow: hidden;
+        }
+
+        .game-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.3;
         }
 
         .game-tag {
@@ -231,7 +254,7 @@
 
         .game-subtitle {
             font-size: 14px;
-            color: rgba(255,255,255,0.7);
+            color: rgba(255,255,255,0.8);
             margin-bottom: 24px;
             position: relative;
             z-index: 1;
@@ -239,7 +262,7 @@
 
         .start-btn {
             background: white;
-            color: #2d3436;
+            color: #667eea;
             border: none;
             padding: 16px 48px;
             border-radius: 28px;
@@ -248,6 +271,12 @@
             cursor: pointer;
             position: relative;
             z-index: 1;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+
+        .start-btn:active {
+            transform: scale(0.95);
         }
 
         .lottery-detail {
@@ -324,6 +353,7 @@
             font-size: 12px;
             cursor: pointer;
             color: #666;
+            transition: all 0.2s;
         }
 
         .quick-btn.active {
@@ -343,11 +373,16 @@
             font-weight: bold;
             cursor: pointer;
             margin-top: 12px;
+            transition: all 0.2s;
         }
 
         .buy-lottery-btn:disabled {
             background: #ddd;
             cursor: not-allowed;
+        }
+
+        .buy-lottery-btn:not(:disabled):active {
+            transform: scale(0.98);
         }
 
         .my-tickets {
@@ -373,6 +408,7 @@
             text-align: center;
             color: white;
             font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .ticket-id {
@@ -405,10 +441,11 @@
             font-size: 11px;
             border: none;
             background: none;
+            transition: all 0.2s;
         }
 
         .nav-item.active {
-            color: #2d3436;
+            color: #667eea;
         }
 
         .nav-icon {
@@ -418,6 +455,12 @@
         .page {
             display: none;
             padding: 16px;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .page.active {
@@ -451,11 +494,16 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
+            transition: all 0.2s;
         }
 
         .claim-btn-large:disabled {
             background: #ccc;
             cursor: not-allowed;
+        }
+
+        .claim-btn-large:not(:disabled):active {
+            transform: scale(0.98);
         }
 
         .burn-card {
@@ -477,6 +525,7 @@
             font-weight: bold;
             cursor: pointer;
             margin-top: 12px;
+            transition: all 0.2s;
         }
 
         .burn-btn-large:disabled {
@@ -484,18 +533,303 @@
             cursor: not-allowed;
         }
 
+        .burn-btn-large:not(:disabled):active {
+            transform: scale(0.98);
+        }
+
         .toast {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             color: white;
             padding: 16px 32px;
-            border-radius: 8px;
+            border-radius: 12px;
             font-size: 14px;
             z-index: 1000;
             display: none;
+            backdrop-filter: blur(10px);
+        }
+
+        /* 新增：开奖区域样式 */
+        .draw-section {
+            background: linear-gradient(135deg, #2d3436 0%, #000000 100%);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 0 16px 16px;
+            color: white;
+            text-align: center;
+        }
+
+        .draw-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: #fdcb6e;
+        }
+
+        .draw-countdown {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+        }
+
+        .draw-status {
+            font-size: 12px;
+            color: #b2bec3;
+            margin-bottom: 16px;
+        }
+
+        .draw-btn {
+            width: 100%;
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .draw-btn:disabled {
+            background: #636e72;
+            cursor: not-allowed;
+        }
+
+        .draw-btn.active {
+            background: #fdcb6e;
+            color: #2d3436;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(253, 203, 110, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(253, 203, 110, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(253, 203, 110, 0); }
+        }
+
+        /* 新增：历史记录样式 */
+        .history-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 0 16px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-item.won {
+            background: rgba(0, 184, 148, 0.05);
+            margin: 0 -12px;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid #00b894;
+        }
+
+        .round-info {
+            flex: 1;
+        }
+
+        .round-id {
+            font-weight: bold;
+            color: #2d3436;
+            font-size: 14px;
+        }
+
+        .round-pool {
+            font-size: 12px;
+            color: #00b894;
+            margin-top: 2px;
+        }
+
+        .round-detail {
+            text-align: right;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .winner-badge {
+            background: #00b894;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-left: 8px;
+        }
+
+        .claim-btn-small {
+            background: #d63031;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        .claim-btn-small.disabled {
+            background: #b2bec3;
+            cursor: not-allowed;
+        }
+
+        .claim-btn-small.can-claim {
+            background: #00b894;
+            animation: pulse 2s infinite;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: #999;
+            padding: 40px 0;
+            font-size: 14px;
+        }
+
+        /* 新增：当前轮次信息卡片 */
+        .round-info-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 0 16px 16px;
+            color: white;
+        }
+
+        .round-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .round-number {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .round-status-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .round-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            text-align: center;
+        }
+
+        .round-stat {
+            background: rgba(255,255,255,0.1);
+            padding: 12px;
+            border-radius: 12px;
+        }
+
+        .round-stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .round-stat-label {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        .status-active { background: #00b894; }
+        .status-pending { background: #fdcb6e; color: #2d3436; }
+        .status-drawn { background: #636e72; }
+
+        /* 新增：我的彩票列表优化 */
+        .my-ticket-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 0 16px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .ticket-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .ticket-mini {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            padding: 8px 4px;
+            text-align: center;
+            color: white;
+            font-size: 11px;
+            position: relative;
+        }
+
+        .ticket-mini::after {
+            content: '✓';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 8px;
+            opacity: 0.8;
+        }
+
+        /* 新增：批量领奖按钮 */
+        .claim-all-btn {
+            width: 100%;
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .claim-all-btn:disabled {
+            background: #ccc;
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -508,6 +842,7 @@
         </div>
     </div>
 
+    <!-- 首页 -->
     <div id="homePage" class="page active">
         <div style="padding: 0 16px; margin-bottom: 8px; text-align: right;">
             <button class="refresh-btn" id="refreshBtn" style="display:none;">🔄 刷新数据</button>
@@ -533,15 +868,48 @@
 
         <div class="info-section">
             <div class="info-card price-card">
-                <h3>💰 今日币价</h3>
-                <div class="price-value" id="tokenPrice">--</div>
-                <div class="price-tip">新代币需等待收录(24-48小时)</div>
+                <h3>💰 分红奖池</h3>
+                <div class="price-value" id="dividendPool" style="color: #d63031;">0.00</div>
+                <div class="price-tip">燃烧AI币可获得分红权重</div>
             </div>
             <div class="info-card pool-card">
-                <div class="pool-header">💎 分红奖池</div>
-                <div class="pool-amount" id="dividendPool">0.00</div>
-                <div class="pool-unit">AI币 待分配</div>
+                <div class="pool-header">💎 累计分红</div>
+                <div class="pool-amount" id="totalDistributed">0.00</div>
+                <div class="pool-unit">AI币 已发放</div>
             </div>
+        </div>
+
+        <!-- 当前轮次信息 -->
+        <div class="round-info-card" id="roundInfoCard" style="display: none;">
+            <div class="round-header">
+                <div class="round-number">第 <span id="currentRound">0</span> 期</div>
+                <div class="round-status-badge" id="roundStatus">等待开奖</div>
+            </div>
+            <div class="round-stats">
+                <div class="round-stat">
+                    <div class="round-stat-value" id="roundPoolDisplay">0</div>
+                    <div class="round-stat-label">奖池(AI币)</div>
+                </div>
+                <div class="round-stat">
+                    <div class="round-stat-value" id="totalTicketsDisplay">0</div>
+                    <div class="round-stat-label">总票数</div>
+                </div>
+                <div class="round-stat">
+                    <div class="round-stat-value" id="participantCount">0</div>
+                    <div class="round-stat-label">参与人数</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 开奖区域 -->
+        <div class="draw-section" id="drawSection" style="display: none;">
+            <div class="draw-header">
+                <span>⏰</span>
+                <span>下期开奖倒计时</span>
+            </div>
+            <div class="draw-countdown" id="countdown">30:00</div>
+            <div class="draw-status" id="drawStatus">购买彩票参与抽奖</div>
+            <button class="draw-btn" id="drawBtn" disabled>等待开奖</button>
         </div>
 
         <div class="game-section" id="gameEntry">
@@ -573,26 +941,36 @@
                 </div>
                 <button class="buy-lottery-btn" id="buyBtn" disabled>请先连接钱包</button>
             </div>
+        </div>
 
-            <div style="margin-top: 20px;">
-                <div class="section-title">🎯 我的本期彩票 (<span id="myTicketCount">0</span>张)</div>
-                <div class="tickets-list" id="myTicketsList">
-                    <div style="grid-column: 1/-1; text-align: center; color: #999; padding: 20px;">
-                        暂无彩票，请购买后查看
-                    </div>
-                </div>
+        <!-- 我的本期彩票 -->
+        <div class="my-ticket-card" id="myTicketCard" style="display: none;">
+            <div class="section-title">
+                🎯 我的本期彩票 
+                <span style="font-size: 12px; color: #999; font-weight: normal;">
+                    (<span id="myTicketCount">0</span>张)
+                </span>
             </div>
-
-            <div style="margin-top: 20px; background: #f8f9fa; border-radius: 12px; padding: 16px; text-align: center;">
-                <div style="font-size: 13px; color: #999; margin-bottom: 8px;">下期开奖倒计时</div>
-                <div style="font-size: 24px; font-weight: bold; color: #2d3436; font-family: monospace;" id="countdown">30:00</div>
-                <div style="font-size: 12px; color: #999; margin-top: 8px;">
-                    本期奖池: <span id="roundPool" style="color: #00b894; font-weight: bold;">0</span> AI币
+            <div class="ticket-grid" id="myTicketsList">
+                <div style="grid-column: 1/-1; text-align: center; color: #999; padding: 20px;">
+                    暂无彩票，请购买后查看
                 </div>
             </div>
         </div>
+
+        <!-- 历史记录 -->
+        <div class="history-section">
+            <div class="section-title">📜 历史开奖</div>
+            <div id="historyList">
+                <div class="empty-history">暂无历史记录</div>
+            </div>
+            <button class="claim-all-btn" id="claimAllBtn" onclick="ContractAPI.claimAllPrizes()" style="display: none;">
+                🎁 一键领取所有奖金
+            </button>
+        </div>
     </div>
 
+    <!-- 燃烧页面 -->
     <div id="burnPage" class="page">
         <div class="burn-card">
             <div class="section-title">🔥 燃烧AI币获得分红权</div>
@@ -626,6 +1004,7 @@
         </div>
     </div>
 
+    <!-- 领分红页面 -->
     <div id="claimPage" class="page">
         <div class="claim-card">
             <div style="font-size: 14px; color: #e17055; margin-bottom: 8px;">💎 可领取分红</div>
@@ -644,6 +1023,7 @@
         </div>
     </div>
 
+    <!-- 排行页面 -->
     <div id="rankPage" class="page">
         <div style="background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
             <div class="section-title">🏆 本期彩票排行</div>
@@ -687,6 +1067,15 @@
                 document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 document.getElementById(page + 'Page').classList.add('active');
                 this.classList.add('active');
+                
+                // 切换页面时刷新数据
+                if (typeof ContractAPI !== 'undefined' && ContractAPI.refreshData) {
+                    ContractAPI.refreshData();
+                }
+                // 切换到首页时加载历史记录
+                if (page === 'home' && typeof ContractAPI !== 'undefined' && ContractAPI.loadRoundHistory) {
+                    ContractAPI.loadRoundHistory();
+                }
             });
         });
 
@@ -694,12 +1083,16 @@
         document.getElementById('startBtn').addEventListener('click', function() {
             const detail = document.getElementById('lotteryDetail');
             const entry = document.getElementById('gameEntry');
-            if(detail.style.display === 'block') {
+            if (detail.style.display === 'block') {
                 detail.style.display = 'none';
                 entry.style.display = 'block';
             } else {
                 detail.style.display = 'block';
                 entry.style.display = 'none';
+                // 显示轮次信息和开奖区域
+                document.getElementById('roundInfoCard').style.display = 'block';
+                document.getElementById('drawSection').style.display = 'block';
+                document.getElementById('myTicketCard').style.display = 'block';
             }
         });
 
@@ -720,24 +1113,25 @@
             const cost = amount * 100;
             document.getElementById('totalCost').textContent = cost;
             
-            // 更新概率（从ContractAPI获取数据计算）
-            if(typeof ContractAPI !== 'undefined') {
+            // 更新概率
+            if (typeof ContractAPI !== 'undefined' && ContractAPI.updateWinChance) {
                 ContractAPI.updateWinChance();
             }
         }
 
         document.getElementById('ticketAmount').addEventListener('input', calculateCost);
+        
         document.getElementById('burnAmount').addEventListener('input', function() {
             const amount = parseInt(this.value) || 0;
             document.getElementById('burnWeight').textContent = amount;
-            if(typeof ContractAPI !== 'undefined') {
+            if (typeof ContractAPI !== 'undefined' && ContractAPI.updateDailyDividend) {
                 ContractAPI.updateDailyDividend(amount);
             }
         });
 
         // 连接钱包按钮
         document.getElementById('connectBtn').addEventListener('click', function() {
-            if(typeof ContractAPI !== 'undefined') {
+            if (typeof ContractAPI !== 'undefined' && ContractAPI.connectWallet) {
                 ContractAPI.connectWallet();
             } else {
                 alert('合约配置加载失败，请检查contract.js');
@@ -746,47 +1140,70 @@
 
         // 刷新按钮
         document.getElementById('refreshBtn').addEventListener('click', function() {
-            if(typeof ContractAPI !== 'undefined') {
+            if (typeof ContractAPI !== 'undefined' && ContractAPI.refreshData) {
                 ContractAPI.refreshData();
             }
         });
 
         // 购买按钮
         document.getElementById('buyBtn').addEventListener('click', function() {
-            if(typeof ContractAPI !== 'undefined') {
+            if (typeof ContractAPI !== 'undefined' && ContractAPI.buyTickets) {
                 const amount = parseInt(document.getElementById('ticketAmount').value) || 0;
-                ContractAPI.buyTickets(amount);
+                if (amount > 0) {
+                    ContractAPI.buyTickets(amount);
+                } else {
+                    alert('请输入有效的购买数量');
+                }
             }
         });
 
         // 燃烧按钮
         document.getElementById('burnButton').addEventListener('click', function() {
-            if(typeof ContractAPI !== 'undefined') {
+            if (typeof ContractAPI !== 'undefined' && ContractAPI.burnTokens) {
                 const amount = document.getElementById('burnAmount').value;
-                ContractAPI.burnTokens(amount);
+                if (parseFloat(amount) > 0) {
+                    ContractAPI.burnTokens(amount);
+                } else {
+                    alert('请输入有效的燃烧数量');
+                }
             }
         });
 
-        // 领取按钮
+        // 领取分红按钮
         document.getElementById('claimButton').addEventListener('click', function() {
-            if(typeof ContractAPI !== 'undefined') {
+            if (typeof ContractAPI !== 'undefined' && ContractAPI.claimDividend) {
                 ContractAPI.claimDividend();
             }
         });
 
-        // 倒计时更新（从合约获取）
-        setInterval(() => {
-            if(typeof ContractAPI !== 'undefined' && ContractAPI.getCountdown) {
-                ContractAPI.getCountdown();
+        // 开奖按钮
+        document.getElementById('drawBtn').addEventListener('click', function() {
+            if (typeof ContractAPI !== 'undefined' && ContractAPI.drawRound) {
+                const roundId = parseInt(document.getElementById('currentRound').textContent);
+                if (roundId > 0) {
+                    ContractAPI.drawRound(roundId);
+                }
             }
-        }, 1000);
+        });
 
-        function showToast(msg) {
+        // 显示提示
+        function showToast(msg, duration = 2000) {
             const toast = document.getElementById('toast');
             toast.textContent = msg;
             toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', 2000);
+            setTimeout(() => toast.style.display = 'none', duration);
         }
+
+        // 暴露给全局
+        window.showToast = showToast;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查是否已连接（如果有钱包缓存）
+            if (typeof ContractAPI !== 'undefined' && window.ethereum && window.ethereum.selectedAddress) {
+                ContractAPI.connectWallet();
+            }
+        });
     </script>
 </body>
 </html>
